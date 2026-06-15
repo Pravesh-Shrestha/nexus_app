@@ -1,0 +1,1 @@
+ /home/sicari/Projects/prabesh/nexus_app/.dart_tool/flutter_build/328292379b555d8ea35133e6c62c8a6e/native_assets.json: 
