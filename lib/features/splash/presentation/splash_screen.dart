@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/welcome/presentation/welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1014), // Dark background color from image
+      backgroundColor: AppColors.background, // Dark background color from image
       body: SafeArea(
         child: Column(
           children: [

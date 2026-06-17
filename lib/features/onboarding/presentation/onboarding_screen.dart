@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_app/features/auth/presentation/login_screen.dart';
+import 'package:nexus_app/core/theme/app_colors.dart';
 
 class OnboardingContent {
   final String title;
@@ -68,7 +69,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0C10),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -104,12 +105,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Text(
                           'Skip',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: AppColors.textSecondary,
                             fontSize: 14,
                           ),
                         ),
                         SizedBox(width: 4),
-                        Icon(Icons.chevron_right, color: Colors.grey, size: 16),
+                        Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 16),
                       ],
                     ),
                   ),
@@ -134,10 +135,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       height: 150,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: const Color(0xFF15161A),
+                        color: AppColors.iconContainer,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF4B39EF).withOpacity(0.3),
+                            color: AppColors.secondaryPurple.withOpacity(0.3),
                             blurRadius: 40,
                             spreadRadius: 10,
                           ),
@@ -161,7 +162,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Container(
               padding: const EdgeInsets.all(32.0),
               decoration: const BoxDecoration(
-                color: Color(0xFF16171D),
+                color: AppColors.surface,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(30),
                   topRight: Radius.circular(30),
@@ -205,10 +206,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               borderRadius: BorderRadius.circular(3),
                               gradient: _currentPage == index
                                   ? const LinearGradient(
-                                      colors: [Color(0xFF8A2BE2), Color(0xFF4B39EF)],
+                                      colors: [AppColors.primaryPurple, AppColors.secondaryPurple],
                                     )
                                   : null,
-                              color: _currentPage == index ? null : Colors.grey.withOpacity(0.3),
+                              color: _currentPage == index ? null : AppColors.textSecondary.withOpacity(0.3),
                             ),
                           ),
                         ),
@@ -228,7 +229,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF4B39EF).withOpacity(0.4),
+                                color: AppColors.secondaryPurple.withOpacity(0.4),
                                 blurRadius: 15,
                                 spreadRadius: 2,
                               ),
@@ -237,7 +238,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           child: const Center(
                             child: Icon(
                               Icons.chevron_right,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               size: 28,
                             ),
                           ),

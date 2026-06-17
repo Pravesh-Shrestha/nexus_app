@@ -1,0 +1,286 @@
+import 'package:flutter/material.dart';
+import 'package:nexus_app/features/auth/presentation/setup_success_screen.dart';
+
+class ProfileSetupScreen extends StatefulWidget {
+  const ProfileSetupScreen({super.key});
+
+  @override
+  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+}
+
+class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+  // Store selected options
+  String _selectedRole = 'Streamer';
+  final List<String> _selectedGames = [];
+  String _selectedPlaystyle = 'Crazy';
+  String _selectedSkillLevel = 'Pro';
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24, bottom: 12),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : const Color(0xFF16171D),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? Colors.white : Colors.white10,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.3),
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                  )
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? Icons.check : Icons.add,
+              color: isSelected ? const Color(0xFF00E5FF) : Colors.white54,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? const Color(0xFF0B0C10) : Colors.white70,
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0C10),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Nexus',
+                    style: TextStyle(
+                      color: Color(0xFF00E5FF),
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                    child: Center(
+                      child: Image.asset(
+                        'assets/images/splash/Frame.png',
+                        width: 20,
+                        height: 20,
+                        color: const Color(0xFF0B0C10),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Tell Us About Yourself',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Complete your profile to find the perfect squad.',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // WHO ARE YOU?
+                    _buildSectionTitle('WHO ARE YOU?'),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: ['Gamer', 'Streamer', 'Creator', 'Others'].map((role) {
+                        return _buildChip(
+                          label: role,
+                          isSelected: _selectedRole == role,
+                          onTap: () {
+                            setState(() {
+                              _selectedRole = role;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    
+                    // FAVORITE GAMES
+                    _buildSectionTitle('FAVORITE GAMES'),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: ['FreeFire', 'Valorant', 'PUBG', 'Others'].map((game) {
+                        final isSelected = _selectedGames.contains(game);
+                        return _buildChip(
+                          label: game,
+                          isSelected: isSelected,
+                          onTap: () {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedGames.remove(game);
+                              } else {
+                                _selectedGames.add(game);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    
+                    // PLAYSTYLE
+                    _buildSectionTitle('PLAYSTYLE'),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: ['Casual', 'Crazy', 'Hardcore', 'Others'].map((style) {
+                        return _buildChip(
+                          label: style,
+                          isSelected: _selectedPlaystyle == style,
+                          onTap: () {
+                            setState(() {
+                              _selectedPlaystyle = style;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    
+                    // SKILL LEVEL
+                    _buildSectionTitle('SKILL LEVEL'),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: ['Noob', 'Soso', 'Pro', 'E-Player'].map((level) {
+                        return _buildChip(
+                          label: level,
+                          isSelected: _selectedSkillLevel == level,
+                          onTap: () {
+                            setState(() {
+                              _selectedSkillLevel = level;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Bottom Continue Button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => const SetupSuccessScreen()),
+                  );
+                },
+                child: Container(
+                  width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: const Color(0xFF16171D),
+                    border: Border.all(
+                      color: const Color(0xFF00E5FF).withOpacity(0.5),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00E5FF).withOpacity(0.1),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      )
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'CONTINUE',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

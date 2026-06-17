@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_app/features/auth/presentation/signup_screen.dart';
 import 'package:nexus_app/features/home/presentation/home_screen.dart';
+import 'package:nexus_app/core/theme/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: const Color(0xFF1C1D24),
+        color: AppColors.surfaceHighlight,
         border: Border.all(color: Colors.white10),
       ),
       child: Center(
@@ -59,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0C10),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -76,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         center: Alignment.topCenter,
                         radius: 1.5,
                         colors: [
-                          const Color(0xFF4B39EF).withOpacity(0.3),
+                          AppColors.secondaryPurple.withOpacity(0.3),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 1.0],
@@ -90,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const Text(
                         'Nexus',
                         style: TextStyle(
-                          color: Color(0xFF00E5FF),
+                          color: AppColors.primaryCyan,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 2.0,
@@ -121,11 +122,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 120,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF15161A),
+                          color: AppColors.iconContainer,
                           border: Border.all(color: Colors.white12, width: 1),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF4B39EF).withOpacity(0.3),
+                              color: AppColors.secondaryPurple.withOpacity(0.3),
                               blurRadius: 40,
                               spreadRadius: 5,
                             ),
@@ -133,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: Center(
                           child: Image.asset(
-                            'assets/images/auth/login_avatar.png',
+                            'assets/images/splash/Frame.png',
                             width: 50,
                             height: 50,
                             errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Colors.white, size: 40),
@@ -221,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     _rememberMe = value ?? false;
                                   });
                                 },
-                                activeColor: const Color(0xFF8A2BE2),
+                                activeColor: AppColors.primaryPurple,
                                 checkColor: Colors.white,
                                 side: const BorderSide(color: Colors.white30),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
@@ -238,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () {},
                           child: const Text(
                             'Forgot password?',
-                            style: TextStyle(color: Color(0xFF00E5FF), fontSize: 12),
+                            style: TextStyle(color: AppColors.primaryCyan, fontSize: 12),
                           ),
                         ),
                       ],
@@ -254,12 +255,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 56,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(28),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF00C6FF), Color(0xFF0072FF), Color(0xFF8A2BE2)],
-                          ),
+                          gradient: AppColors.authButtonGradient,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF00E5FF).withOpacity(0.3),
+                              color: AppColors.primaryCyan.withOpacity(0.3),
                               blurRadius: 15,
                               spreadRadius: 2,
                             ),
@@ -268,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Container(
                           margin: const EdgeInsets.all(2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0B0C10),
+                            color: AppColors.background,
                             borderRadius: BorderRadius.circular(26),
                           ),
                           child: const Center(
@@ -301,7 +300,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: const Text(
                             'Register now',
                             style: TextStyle(
-                              color: Color(0xFF8A2BE2),
+                              color: AppColors.primaryPurple,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),

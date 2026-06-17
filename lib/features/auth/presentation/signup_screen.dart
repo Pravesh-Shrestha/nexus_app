@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_app/features/auth/presentation/login_screen.dart';
-import 'package:nexus_app/features/auth/presentation/setup_success_screen.dart';
+import 'package:nexus_app/features/auth/presentation/profile_setup_screen.dart';
+import 'package:nexus_app/core/theme/app_colors.dart';
+import 'package:nexus_app/core/theme/app_sizes.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -31,7 +33,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _signup() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const SetupSuccessScreen()),
+      MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
     );
   }
 
@@ -48,10 +50,10 @@ class _SignupScreenState extends State<SignupScreen> {
     bool isPassword = false,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: AppSizes.p16),
       decoration: BoxDecoration(
-        color: const Color(0xFF16171D),
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppSizes.r16),
       ),
       child: TextField(
         controller: controller,
@@ -85,7 +87,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0C10),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -101,7 +103,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         center: Alignment.topCenter,
                         radius: 1.5,
                         colors: [
-                          const Color(0xFF4B39EF).withOpacity(0.3),
+                          AppColors.secondaryPurple.withOpacity(0.3),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 1.0],
@@ -114,7 +116,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       const Text(
                         'Nexus',
                         style: TextStyle(
-                          color: Color(0xFF00E5FF),
+                          color: AppColors.primaryCyan,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 2.0,
@@ -136,11 +138,11 @@ class _SignupScreenState extends State<SignupScreen> {
                         height: 100,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: const Color(0xFF15161A),
+                          color: AppColors.iconContainer,
                           border: Border.all(color: Colors.white12, width: 1),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF4B39EF).withOpacity(0.3),
+                              color: AppColors.secondaryPurple.withOpacity(0.3),
                               blurRadius: 30,
                               spreadRadius: 2,
                             ),
@@ -148,7 +150,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         child: Center(
                           child: Image.asset(
-                            'assets/images/auth/signup_avatar.png',
+                            'assets/images/splash/Frame.png',
                             width: 40,
                             height: 40,
                             errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_add_alt_1, color: Colors.white, size: 30),
@@ -175,7 +177,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     child: const Text(
                       'Sign In',
                       style: TextStyle(
-                        color: Color(0xFF8A2BE2),
+                        color: AppColors.primaryPurple,
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -188,7 +190,7 @@ class _SignupScreenState extends State<SignupScreen> {
               
               // Form Fields
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
                 child: Column(
                   children: [
                     _buildTextField(
@@ -208,10 +210,10 @@ class _SignupScreenState extends State<SignupScreen> {
                         Expanded(
                           flex: 3,
                           child: Container(
-                            margin: const EdgeInsets.only(bottom: 16),
+                            margin: const EdgeInsets.only(bottom: AppSizes.p16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF16171D),
-                              borderRadius: BorderRadius.circular(16),
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(AppSizes.r16),
                             ),
                             child: TextField(
                               controller: _dobController,
@@ -230,19 +232,19 @@ class _SignupScreenState extends State<SignupScreen> {
                         Expanded(
                           flex: 2,
                           child: Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            margin: const EdgeInsets.only(bottom: AppSizes.p16),
+                            padding: const EdgeInsets.symmetric(horizontal: AppSizes.p16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF16171D),
-                              borderRadius: BorderRadius.circular(16),
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(AppSizes.r16),
                             ),
-                            height: 56, // Match textfield height approximately
+                            height: AppSizes.buttonHeight,
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: _selectedGender,
                                 hint: const Text('Gender', style: TextStyle(color: Colors.white30, fontSize: 14)),
                                 icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white30),
-                                dropdownColor: const Color(0xFF1C1D24),
+                                dropdownColor: AppColors.surfaceHighlight,
                                 isExpanded: true,
                                 style: const TextStyle(color: Colors.white),
                                 items: ['Male', 'Female', 'Other', 'Prefer not to say']
@@ -291,15 +293,13 @@ class _SignupScreenState extends State<SignupScreen> {
                       onTap: _signup,
                       child: Container(
                         width: double.infinity,
-                        height: 56,
+                        height: AppSizes.buttonHeight,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF00C6FF), Color(0xFF0072FF), Color(0xFF8A2BE2)],
-                          ),
+                          borderRadius: BorderRadius.circular(AppSizes.r28),
+                          gradient: AppColors.authButtonGradient,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF00E5FF).withOpacity(0.3),
+                              color: AppColors.primaryCyan.withOpacity(0.3),
                               blurRadius: 15,
                               spreadRadius: 2,
                             ),
@@ -308,8 +308,8 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: Container(
                           margin: const EdgeInsets.all(2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0B0C10),
-                            borderRadius: BorderRadius.circular(26),
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(AppSizes.r26),
                           ),
                           child: const Center(
                             child: Text(

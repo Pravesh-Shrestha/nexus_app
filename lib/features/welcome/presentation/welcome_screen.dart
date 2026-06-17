@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/onboarding/presentation/onboarding_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -7,7 +8,7 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1014),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Stack(
           children: [
@@ -20,7 +21,7 @@ class WelcomeScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      const Color(0xFF4B39EF).withOpacity(0.15),
+                      AppColors.secondaryPurple.withOpacity(0.15),
                       Colors.transparent,
                     ],
                     stops: const [0.0, 1.0],
@@ -43,14 +44,14 @@ class WelcomeScreen extends StatelessWidget {
                           height: 120,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF15161A),
+                            color: AppColors.iconContainer,
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
+                              color: AppColors.borderLight,
                               width: 1,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF4B39EF).withOpacity(0.2),
+                                color: AppColors.secondaryPurple.withOpacity(0.2),
                                 blurRadius: 30,
                                 spreadRadius: 5,
                               ),
@@ -58,7 +59,7 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                           child: Center(
                             child: Image.asset(
-                              'assets/images/welcome/Nexus_Logo_Container.png',
+                              'assets/images/splash/Frame.png',
                               width: 60,
                               height: 60,
                               errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
@@ -71,7 +72,7 @@ class WelcomeScreen extends StatelessWidget {
                         const Text(
                           'Welcome Aboard',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
@@ -84,7 +85,7 @@ class WelcomeScreen extends StatelessWidget {
                           'Your journey into the Nexus\necosystem begins now.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: AppColors.textSecondary,
                             fontSize: 14,
                             height: 1.5,
                           ),
@@ -111,14 +112,14 @@ class WelcomeScreen extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.keyboard_double_arrow_up_rounded,
-                          color: const Color(0xFF9D84FF).withOpacity(0.8),
+                          color: AppColors.primaryPurple.withOpacity(0.8),
                           size: 28,
                         ),
                         const SizedBox(height: 8),
                         const Text(
                           'SHAKE OR SWIPE UP TO BEGIN',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: AppColors.textMuted,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 1.5,
