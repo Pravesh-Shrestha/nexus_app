@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nexus_app/features/home/presentation/home_screen.dart';
+import 'package:nexus_app/features/auth/presentation/login_screen.dart';
 
 class OnboardingContent {
   final String title;
@@ -50,7 +50,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _goToHome() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
