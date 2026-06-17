@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nexus_app/features/home/presentation/home_screen.dart';
+import 'package:nexus_app/features/home/presentation/main_layout.dart';
 
 class SetupSuccessScreen extends StatelessWidget {
   const SetupSuccessScreen({super.key});
@@ -108,7 +108,7 @@ class SetupSuccessScreen extends StatelessWidget {
                   GestureDetector(
                     onTap: () {
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const HomeScreen()),
+                        MaterialPageRoute(builder: (_) => const MainLayout()),
                       );
                     },
                     child: Container(

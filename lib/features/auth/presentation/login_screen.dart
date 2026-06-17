@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_app/features/auth/presentation/signup_screen.dart';
-import 'package:nexus_app/features/home/presentation/home_screen.dart';
+import 'package:nexus_app/features/home/presentation/main_layout.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
 import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
+import 'package:nexus_app/features/auth/data/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +17,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = false;
+  bool _isLoading = false;
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -24,11 +27,58 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
-    // For now, bypass auth and go to HomeScreen
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+  Future<void> _login() async {
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await _authService.signInWithEmail(
+        email: _usernameController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainLayout()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = await _authService.signInWithGoogle();
+      if (user != null && mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainLayout()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _goToSignup() {
@@ -37,22 +87,25 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialButton(String assetName, IconData fallbackIcon) {
-    return Container(
-      width: 48,
-      height: 48,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.surfaceHighlight,
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Center(
-        child: Image.asset(
-          'assets/images/auth/$assetName',
-          width: 24,
-          height: 24,
-          errorBuilder: (context, error, stackTrace) => Icon(fallbackIcon, color: Colors.white, size: 24),
+  Widget _buildSocialButton(String assetName, IconData fallbackIcon, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.surfaceHighlight,
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Center(
+          child: Image.asset(
+            'assets/images/auth/$assetName',
+            width: 24,
+            height: 24,
+            errorBuilder: (context, error, stackTrace) => Icon(fallbackIcon, color: Colors.white, size: 24),
+          ),
         ),
       ),
     );
@@ -209,7 +262,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     
                     GradientButton(
                       text: 'LOGIN',
-                      onTap: _login,
+                      isLoading: _isLoading,
+                      onTap: _isLoading ? () {} : _login,
                     ),
                     
                     const SizedBox(height: 32),
@@ -259,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildSocialButton('google.png', Icons.g_mobiledata),
+                        _buildSocialButton('google.png', Icons.g_mobiledata, onTap: _isLoading ? null : _loginWithGoogle),
                         _buildSocialButton('facebook.png', Icons.facebook),
                         _buildSocialButton('apple.png', Icons.apple),
                       ],

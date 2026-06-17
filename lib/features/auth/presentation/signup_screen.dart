@@ -5,6 +5,7 @@ import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
 import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
+import 'package:nexus_app/features/auth/data/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -20,6 +21,8 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   String? _selectedGender;
+  bool _isLoading = false;
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -31,10 +34,36 @@ class _SignupScreenState extends State<SignupScreen> {
     super.dispose();
   }
 
-  void _signup() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
-    );
+  Future<void> _signup() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await _authService.signUpWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _goToLogin() {
@@ -260,7 +289,8 @@ class _SignupScreenState extends State<SignupScreen> {
                     // SIGN UP Button
                     GradientButton(
                       text: 'SIGN UP',
-                      onTap: _signup,
+                      isLoading: _isLoading,
+                      onTap: _isLoading ? () {} : _signup,
                     ),
                     
                     const SizedBox(height: 40),
