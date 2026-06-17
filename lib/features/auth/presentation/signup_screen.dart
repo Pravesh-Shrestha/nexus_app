@@ -110,6 +110,14 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                   ),
+                  Positioned(
+                    left: 16,
+                    top: 16,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      onPressed: _goToLogin,
+                    ),
+                  ),
                   Column(
                     children: [
                       const SizedBox(height: 30),
