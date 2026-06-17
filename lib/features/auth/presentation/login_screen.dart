@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:nexus_app/features/auth/presentation/signup_screen.dart';
 import 'package:nexus_app/features/home/presentation/home_screen.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
+import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
+import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +16,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = false;
-  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -77,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         center: Alignment.topCenter,
                         radius: 1.5,
                         colors: [
-                          AppColors.secondaryPurple.withOpacity(0.3),
+                          AppColors.secondaryPurple.withValues(alpha: 0.3),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 1.0],
@@ -126,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           border: Border.all(color: Colors.white12, width: 1),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.secondaryPurple.withOpacity(0.3),
+                              color: AppColors.secondaryPurple.withValues(alpha: 0.3),
                               blurRadius: 40,
                               spreadRadius: 5,
                             ),
@@ -153,58 +154,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Column(
                   children: [
-                    // Username/Email Field
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF16171D),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: TextField(
-                        controller: _usernameController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Username or email',
-                          hintStyle: const TextStyle(color: Colors.white30),
-                          prefixIcon: const Icon(Icons.alternate_email, color: Colors.white30, size: 20),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                        ),
-                      ),
+                    CustomTextField(
+                      controller: _usernameController,
+                      hintText: 'Username or email',
+                      prefixIcon: Icons.alternate_email,
                     ),
-                    const SizedBox(height: 16),
-                    
-                    // Password Field
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF16171D),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: TextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          hintStyle: const TextStyle(color: Colors.white30),
-                          prefixIcon: const Icon(Icons.lock_outline, color: Colors.white30, size: 20),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                              color: Colors.white30,
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                        ),
-                      ),
+                    CustomTextField(
+                      controller: _passwordController,
+                      hintText: 'Password',
+                      prefixIcon: Icons.lock_outline,
+                      isPassword: true,
                     ),
-                    const SizedBox(height: 16),
                     
                     // Remember me & Forgot Password
                     Row(
@@ -247,42 +207,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     
                     const SizedBox(height: 32),
                     
-                    // LOGIN Button
-                    GestureDetector(
+                    GradientButton(
+                      text: 'LOGIN',
                       onTap: _login,
-                      child: Container(
-                        width: double.infinity,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
-                          gradient: AppColors.authButtonGradient,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryCyan.withOpacity(0.3),
-                              blurRadius: 15,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Container(
-                          margin: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'LOGIN',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                     ),
                     
                     const SizedBox(height: 32),

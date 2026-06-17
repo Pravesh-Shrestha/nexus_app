@@ -26,7 +26,7 @@ class AppColors {
       center: center,
       radius: 1.5,
       colors: [
-        const Color(0xFF4B39EF).withOpacity(0.3),
+        const Color(0xFF4B39EF).withValues(alpha: 0.3),
         Colors.transparent,
       ],
       stops: const [0.0, 1.0],

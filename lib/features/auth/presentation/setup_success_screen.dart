@@ -37,12 +37,12 @@ class SetupSuccessScreen extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: const Color(0xFF15161A),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                           width: 2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF00E5FF).withOpacity(0.15),
+                            color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
                             blurRadius: 40,
                             spreadRadius: 10,
                           ),

@@ -48,7 +48,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     blurRadius: 10,
                     spreadRadius: 1,
                   )
@@ -244,12 +244,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     borderRadius: BorderRadius.circular(16),
                     color: const Color(0xFF16171D),
                     border: Border.all(
-                      color: const Color(0xFF00E5FF).withOpacity(0.5),
+                      color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF00E5FF).withOpacity(0.1),
+                        color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
                         blurRadius: 10,
                         spreadRadius: 1,
                       )

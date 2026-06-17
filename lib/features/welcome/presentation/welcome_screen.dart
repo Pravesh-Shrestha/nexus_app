@@ -21,7 +21,7 @@ class WelcomeScreen extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      AppColors.secondaryPurple.withOpacity(0.15),
+                      AppColors.secondaryPurple.withValues(alpha: 0.15),
                       Colors.transparent,
                     ],
                     stops: const [0.0, 1.0],
@@ -51,7 +51,7 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.secondaryPurple.withOpacity(0.2),
+                                color: AppColors.secondaryPurple.withValues(alpha: 0.2),
                                 blurRadius: 30,
                                 spreadRadius: 5,
                               ),
@@ -112,7 +112,7 @@ class WelcomeScreen extends StatelessWidget {
                       children: [
                         Icon(
                           Icons.keyboard_double_arrow_up_rounded,
-                          color: AppColors.primaryPurple.withOpacity(0.8),
+                          color: AppColors.primaryPurple.withValues(alpha: 0.8),
                           size: 28,
                         ),
                         const SizedBox(height: 8),

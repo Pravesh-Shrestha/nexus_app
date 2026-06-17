@@ -3,6 +3,8 @@ import 'package:nexus_app/features/auth/presentation/login_screen.dart';
 import 'package:nexus_app/features/auth/presentation/profile_setup_screen.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
+import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
+import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -17,8 +19,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
-  bool _obscurePassword = true;
   String? _selectedGender;
 
   @override
@@ -43,46 +43,7 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hintText,
-    required IconData prefixIcon,
-    bool isPassword = false,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSizes.p16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppSizes.r16),
-      ),
-      child: TextField(
-        controller: controller,
-        obscureText: isPassword ? _obscurePassword : false,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
-          prefixIcon: Icon(prefixIcon, color: Colors.white30, size: 20),
-          suffixIcon: isPassword
-              ? IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                    color: Colors.white30,
-                    size: 20,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
-                )
-              : null,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 18),
-        ),
-      ),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +64,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         center: Alignment.topCenter,
                         radius: 1.5,
                         colors: [
-                          AppColors.secondaryPurple.withOpacity(0.3),
+                          AppColors.secondaryPurple.withValues(alpha: 0.3),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 1.0],
@@ -150,7 +111,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           border: Border.all(color: Colors.white12, width: 1),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.secondaryPurple.withOpacity(0.3),
+                              color: AppColors.secondaryPurple.withValues(alpha: 0.3),
                               blurRadius: 30,
                               spreadRadius: 2,
                             ),
@@ -201,12 +162,12 @@ class _SignupScreenState extends State<SignupScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
                 child: Column(
                   children: [
-                    _buildTextField(
+                    CustomTextField(
                       controller: _fullNameController,
                       hintText: 'Full name',
                       prefixIcon: Icons.person_outline,
                     ),
-                    _buildTextField(
+                    CustomTextField(
                       controller: _usernameController,
                       hintText: 'Username',
                       prefixIcon: Icons.alternate_email,
@@ -274,12 +235,12 @@ class _SignupScreenState extends State<SignupScreen> {
                       ],
                     ),
                     
-                    _buildTextField(
+                    CustomTextField(
                       controller: _emailController,
                       hintText: 'Email address',
                       prefixIcon: Icons.mail_outline,
                     ),
-                    _buildTextField(
+                    CustomTextField(
                       controller: _passwordController,
                       hintText: 'Password',
                       prefixIcon: Icons.lock_outline,
@@ -297,41 +258,9 @@ class _SignupScreenState extends State<SignupScreen> {
                     const SizedBox(height: 24),
                     
                     // SIGN UP Button
-                    GestureDetector(
+                    GradientButton(
+                      text: 'SIGN UP',
                       onTap: _signup,
-                      child: Container(
-                        width: double.infinity,
-                        height: AppSizes.buttonHeight,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppSizes.r28),
-                          gradient: AppColors.authButtonGradient,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryCyan.withOpacity(0.3),
-                              blurRadius: 15,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Container(
-                          margin: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(AppSizes.r26),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'SIGN UP',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                     ),
                     
                     const SizedBox(height: 40),
