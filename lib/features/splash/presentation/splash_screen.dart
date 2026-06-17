@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nexus_app/features/home/presentation/home_screen.dart';
+import 'package:nexus_app/features/welcome/presentation/welcome_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -16,7 +16,7 @@ class _SplashScreenState extends State<SplashScreen> {
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
         );
       }
     });
