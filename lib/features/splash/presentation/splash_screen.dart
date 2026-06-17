@@ -36,13 +36,13 @@ class _SplashScreenState extends State<SplashScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Image.asset(
-                      'assets/splash/Frame.png',
+                      'assets/images/splash/Frame.png',
                       width: 150,
                       errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 80, color: Colors.grey),
                     ),
                     const SizedBox(height: 20),
                     Image.asset(
-                      'assets/splash/Container.png',
+                      'assets/images/splash/Container.png',
                       width: 150,
                       errorBuilder: (context, error, stackTrace) => const SizedBox(),
                     ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nexus_app/features/home/presentation/home_screen.dart';
+import 'package:nexus_app/features/onboarding/presentation/onboarding_screen.dart';
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
@@ -58,7 +58,7 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                           child: Center(
                             child: Image.asset(
-                              'assets/welcome/logo.png',
+                              'assets/images/welcome/Nexus_Logo_Container.png',
                               width: 60,
                               height: 60,
                               errorBuilder: (context, error, stackTrace) => const Icon(Icons.image_not_supported, color: Colors.grey, size: 40),
@@ -102,7 +102,7 @@ class WelcomeScreen extends StatelessWidget {
                       // Simple swipe up detection
                       if (details.primaryVelocity != null && details.primaryVelocity! < -300) {
                         Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (_) => const HomeScreen()),
+                          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
                         );
                       }
                     },
