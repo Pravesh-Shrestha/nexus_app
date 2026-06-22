@@ -90,7 +90,6 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
   Future<void> _loadData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      _currentUserId = user.uid;
       try {
         // 1. Fetch friends list profiles
         final friendsList = await _friendsService.getFriendsProfiles(user.uid);

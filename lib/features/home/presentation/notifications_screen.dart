@@ -22,7 +22,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String _currentUserId = '';
 
   // Local mockup fallback if DB is empty
-  List<Map<String, dynamic>> _mockNotifications = [
+  final List<Map<String, dynamic>> _mockNotifications = [
     {
       'id': 'mock_1',
       'type': 'friend_request',
