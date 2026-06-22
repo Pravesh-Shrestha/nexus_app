@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nexus_app/features/auth/presentation/signup_screen.dart';
 import 'package:nexus_app/features/home/presentation/main_layout.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
@@ -85,6 +86,137 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const SignupScreen()),
     );
+  }
+
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+    bool dialogLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF0B0C10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: Colors.white10),
+              ),
+              title: const Text(
+                'Reset Password',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Enter your registered email address and we will send you a secure link to reset your password.',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  CustomTextField(
+                    controller: emailController,
+                    hintText: 'Email Address',
+                    prefixIcon: Icons.email_outlined,
+                  ),
+                ],
+              ),
+              actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: dialogLoading ? null : () => Navigator.of(context).pop(),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: dialogLoading
+                          ? const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryCyan),
+                                ),
+                              ),
+                            )
+                          : GradientButton(
+                              text: 'SEND LINK',
+                              onTap: () async {
+                                final email = emailController.text.trim();
+                                if (email.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Please enter your email'),
+                                      backgroundColor: AppColors.errorRed,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                setDialogState(() => dialogLoading = true);
+                                try {
+                                  await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                                  if (context.mounted) {
+                                    Navigator.of(context).pop();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Password reset link sent successfully!'),
+                                        backgroundColor: AppColors.successGreen,
+                                      ),
+                                    );
+                                  }
+                                } on FirebaseAuthException catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(e.message ?? 'An error occurred. Please try again.'),
+                                        backgroundColor: AppColors.errorRed,
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(e.toString()),
+                                        backgroundColor: AppColors.errorRed,
+                                      ),
+                                    );
+                                  }
+                                } finally {
+                                  if (context.mounted) {
+                                    setDialogState(() => dialogLoading = false);
+                                  }
+                                }
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) => emailController.dispose());
   }
 
   Widget _buildSocialButton(String assetName, IconData fallbackIcon, {VoidCallback? onTap}) {
@@ -249,7 +381,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: _showForgotPasswordDialog,
                           child: const Text(
                             'Forgot password?',
                             style: TextStyle(color: AppColors.primaryCyan, fontSize: 12),

@@ -1,8 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:nexus_app/core/services/email_service.dart';
 import 'package:nexus_app/features/home/presentation/main_layout.dart';
 
-class SetupSuccessScreen extends StatelessWidget {
-  const SetupSuccessScreen({super.key});
+class SetupSuccessScreen extends StatefulWidget {
+  final String email;
+  final String fullName;
+
+  const SetupSuccessScreen({
+    super.key,
+    required this.email,
+    required this.fullName,
+  });
+
+  @override
+  State<SetupSuccessScreen> createState() => _SetupSuccessScreenState();
+}
+
+class _SetupSuccessScreenState extends State<SetupSuccessScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Send the welcome email after the widget is mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendWelcomeEmail();
+    });
+  }
+
+  Future<void> _sendWelcomeEmail() async {
+    if (widget.email.isEmpty) return;
+    try {
+      await EmailService().sendWelcomeEmail(
+        recipientEmail: widget.email,
+        recipientName: widget.fullName,
+      );
+    } catch (e) {
+      debugPrint('Error sending welcome email: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

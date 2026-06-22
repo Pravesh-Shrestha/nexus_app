@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:nexus_app/core/config/email_config.dart';
@@ -89,9 +90,4 @@ class EmailService {
       htmlContent: html,
     );
   }
-}
-
-// Simple helper for terminal logging warnings
-void debugPrint(String message) {
-  print(message);
 }

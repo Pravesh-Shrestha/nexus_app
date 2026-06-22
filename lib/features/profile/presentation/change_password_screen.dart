@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
 import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/core/services/email_service.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -50,6 +52,23 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         currentPassword: _currentPasswordController.text,
         newPassword: _newPasswordController.text,
       );
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Fetch user data asynchronously to get their display/full name
+        AuthService().getUserData(user.uid).then((userData) {
+          if (userData != null) {
+            EmailService().sendPasswordChangedEmail(
+              recipientEmail: userData.email,
+              recipientName: userData.fullName,
+            ).catchError((e) {
+              debugPrint('Error sending security alert email: $e');
+            });
+          }
+        }).catchError((e) {
+          debugPrint('Error fetching user data for security alert: $e');
+        });
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

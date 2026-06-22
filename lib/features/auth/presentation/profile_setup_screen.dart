@@ -270,7 +270,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     await AuthService().saveUserData(userModel);
                     if (mounted) {
                       navigator.pushReplacement(
-                        MaterialPageRoute(builder: (_) => const SetupSuccessScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => SetupSuccessScreen(
+                            email: userModel.email,
+                            fullName: userModel.fullName,
+                          ),
+                        ),
                       );
                     }
                   } catch (e) {
