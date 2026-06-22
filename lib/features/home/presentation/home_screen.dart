@@ -6,6 +6,7 @@ import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/home/presentation/notifications_screen.dart';
+import 'package:nexus_app/features/friends/presentation/find_ally_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -169,7 +170,17 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 32),
 
               // Recommended Players
-              _buildSectionHeader('Recommended Players', 'View More'),
+              _buildSectionHeader(
+                'Recommended Players',
+                'View More',
+                onTapAction: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const FindAllyScreen(),
+                    ),
+                  );
+                },
+              ),
               const SizedBox(height: 16),
               SizedBox(
                 height: 100,
@@ -297,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, String action) {
+  Widget _buildSectionHeader(String title, String action, {VoidCallback? onTapAction}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
       child: Row(
@@ -312,12 +323,15 @@ class _HomeScreenState extends State<HomeScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          Text(
-            action,
-            style: const TextStyle(
-              color: AppColors.primaryPurple,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
+          GestureDetector(
+            onTap: onTapAction,
+            child: Text(
+              action,
+              style: const TextStyle(
+                color: AppColors.primaryPurple,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
