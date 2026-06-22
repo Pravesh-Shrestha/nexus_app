@@ -13,10 +13,18 @@ Nexus is a Flutter-based mobile application designed for gamers. It provides a p
 - **Onboarding Flow**: 
   - Sliding `PageView` interface with three distinct onboarding steps.
   - Dynamic gradient-colored page indicators.
-- **Authentication Setup**:
-  - **Login Screen**: Features fields for username/email, password, "Remember me", and social login options (Google, Facebook, Apple).
-  - **Signup Screen**: Comprehensive account creation form collecting full name, username, DOB, gender, email, and password.
-  - **Success Screen**: A congratulatory setup success screen marking the completion of the onboarding flow.
+- **Authentication & Setup**:
+  - **Login Screen**: Fields for username/email, password, "Remember me", password recovery reset dialog, and social login options (Google, Facebook, Apple).
+  - **Signup Screen**: Account creation form collecting full name, username, DOB (with auto-formatting `YYYY/MM/DD` mask and validation), gender, email, password, and a **Terms & Privacy policy agreement checkbox**.
+  - **Success Screen**: A congratulatory setup success screen that automatically triggers a styled Welcome Email.
+- **SMTP Email Notification Service**:
+  - Integrates an SMTP server configuration (`email_config.dart` supporting Google App Passwords).
+  - Triggers beautiful responsive dark-themed transactional HTML emails for welcome notifications and password updated security alerts.
+  - Modular helper structure allowing developers to add future notification templates (e.g. community invites).
+- **Cloudinary Avatar integration**:
+  - Tapping the avatar stack opens a sheet to pick images from **Camera** or **Gallery**.
+  - Automatically signs and uploads image files to Cloudinary's secure REST API.
+  - Dynamically displays network/base64 avatars across the Profile, Edit Profile form, and Home Screen headers.
 
 ## Getting Started
 
@@ -59,11 +67,16 @@ nexus_app/
 │       ├── splash/
 │       └── welcome/
 └── lib/
-    ├── core/                # Core functionalities, theming, and constants
+    ├── core/                # Core functionalities, utilities, theming, and constants
+    │   ├── config/          # Configurations (Cloudinary, SMTP Email)
+    │   ├── services/        # Services (SMTP Email, Cloudinary uploading)
+    │   ├── utils/           # Shared utility classes (TextInputFormatters)
+    │   └── theme/           # Theming assets (AppColors, AppSizes)
     ├── features/
     │   ├── auth/            # Login, Signup, Setup Success screens
-    │   ├── home/            # Main application hub (in progress)
+    │   ├── home/            # Main application hub
     │   ├── onboarding/      # Onboarding flow components
+    │   ├── profile/         # Profile management, password edits
     │   ├── splash/          # Splash screen presentation and logic
     │   └── welcome/         # Welcome screen presentation
     └── main.dart
@@ -73,6 +86,9 @@ nexus_app/
 - [Flutter](https://flutter.dev/) - Framework
 - [Dart](https://dart.dev/) - Language
 - [flutter_native_splash](https://pub.dev/packages/flutter_native_splash) - Native splash screen customization
+- [mailer](https://pub.dev/packages/mailer) - SMTP email transmission helper
+- [image_picker](https://pub.dev/packages/image_picker) - Access device photo library and camera
+- [crypto](https://pub.dev/packages/crypto) - Hashing for secure Cloudinary uploads
 
 ## Authors
 - **Prabesh-Shrestha** - Initial work

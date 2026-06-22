@@ -7,6 +7,7 @@ import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
 import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/profile/presentation/terms_privacy_screen.dart';
+import 'package:nexus_app/core/utils/date_input_formatter.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -23,6 +24,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _passwordController = TextEditingController();
   String? _selectedGender;
   bool _isLoading = false;
+  bool _agreeToTerms = false;
   final AuthService _authService = AuthService();
 
   @override
@@ -44,6 +46,42 @@ class _SignupScreenState extends State<SignupScreen> {
         _selectedGender == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill out all fields')),
+      );
+      return;
+    }
+
+    if (!_agreeToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must agree to the Terms and Privacy Policy to register'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    final dobText = _dobController.text.trim();
+    final dobRegex = RegExp(r'^\d{4}/\d{2}/\d{2}$');
+    if (!dobRegex.hasMatch(dobText)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid Date of Birth (YYYY/MM/DD)'),
+          backgroundColor: AppColors.errorRed,
+        ),
+      );
+      return;
+    }
+
+    final parts = dobText.split('/');
+    final year = int.tryParse(parts[0]) ?? 0;
+    final month = int.tryParse(parts[1]) ?? 0;
+    final day = int.tryParse(parts[2]) ?? 0;
+    if (year < 1900 || year > DateTime.now().year || month < 1 || month > 12 || day < 1 || day > 31) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a valid Date of Birth'),
+          backgroundColor: AppColors.errorRed,
+        ),
       );
       return;
     }
@@ -229,6 +267,10 @@ class _SignupScreenState extends State<SignupScreen> {
                             child: TextField(
                               controller: _dobController,
                               style: const TextStyle(color: Colors.white),
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                DateTextInputFormatter(),
+                              ],
                               decoration: const InputDecoration(
                                 hintText: 'YYYY/MM/DD',
                                 hintStyle: TextStyle(color: Colors.white30, fontSize: 14),
@@ -291,31 +333,54 @@ class _SignupScreenState extends State<SignupScreen> {
                     
                     const SizedBox(height: 8),
                     
-                    // Terms
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const TermsPrivacyScreen(),
+                    // Terms Agreement Checkbox Row
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: Checkbox(
+                            value: _agreeToTerms,
+                            onChanged: (value) {
+                              setState(() {
+                                _agreeToTerms = value ?? false;
+                              });
+                            },
+                            activeColor: AppColors.primaryPurple,
+                            checkColor: Colors.white,
+                            side: const BorderSide(color: Colors.white30),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                           ),
-                        );
-                      },
-                      child: RichText(
-                        text: const TextSpan(
-                          text: 'I agree to the ',
-                          style: TextStyle(color: Colors.white30, fontSize: 10),
-                          children: [
-                            TextSpan(
-                              text: 'Terms and Privacy Policy',
-                              style: TextStyle(
-                                color: AppColors.primaryPurple,
-                                fontWeight: FontWeight.bold,
-                                decoration: TextDecoration.underline,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const TermsPrivacyScreen(),
+                                ),
+                              );
+                            },
+                            child: RichText(
+                              text: const TextSpan(
+                                text: 'I agree to the ',
+                                style: TextStyle(color: Colors.white30, fontSize: 11),
+                                children: [
+                                  TextSpan(
+                                    text: 'Terms and Privacy Policy',
+                                    style: TextStyle(
+                                      color: AppColors.primaryPurple,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                     
                     const SizedBox(height: 24),
