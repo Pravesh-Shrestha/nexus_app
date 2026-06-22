@@ -72,6 +72,7 @@ class FriendsService {
         receiverId: receiverId,
         status: 'pending',
         createdAt: DateTime.now(),
+        expireAt: DateTime.now().add(const Duration(days: 21)),
       );
 
       // 1. Write the FriendRequest document
@@ -85,7 +86,7 @@ class FriendsService {
         type: 'friend_request',
         isRead: false,
         createdAt: DateTime.now(),
-        expireAt: DateTime.now().add(const Duration(days: 20)),
+        expireAt: DateTime.now().add(const Duration(days: 21)),
         relatedId: senderId,
         status: 'pending',
       );
@@ -178,7 +179,7 @@ class FriendsService {
       final sentRequestDoc = await _firestore.collection('friend_requests').doc('${currentUserId}_$otherUserId').get();
       if (sentRequestDoc.exists && sentRequestDoc.data() != null) {
         final request = FriendRequestModel.fromJson(sentRequestDoc.data()!);
-        if (request.status == 'pending') {
+        if (request.status == 'pending' && request.expireAt.isAfter(DateTime.now())) {
           return 'pending_sent';
         }
       }
@@ -187,7 +188,7 @@ class FriendsService {
       final receivedRequestDoc = await _firestore.collection('friend_requests').doc('${otherUserId}_$currentUserId').get();
       if (receivedRequestDoc.exists && receivedRequestDoc.data() != null) {
         final request = FriendRequestModel.fromJson(receivedRequestDoc.data()!);
-        if (request.status == 'pending') {
+        if (request.status == 'pending' && request.expireAt.isAfter(DateTime.now())) {
           return 'pending_received';
         }
       }

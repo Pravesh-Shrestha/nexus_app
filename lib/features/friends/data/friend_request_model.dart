@@ -6,6 +6,7 @@ class FriendRequestModel {
   final String receiverId;
   final String status; // 'pending' | 'accepted' | 'declined'
   final DateTime createdAt;
+  final DateTime expireAt;
 
   FriendRequestModel({
     required this.id,
@@ -13,6 +14,7 @@ class FriendRequestModel {
     required this.receiverId,
     required this.status,
     required this.createdAt,
+    required this.expireAt,
   });
 
   Map<String, dynamic> toJson() {
@@ -22,6 +24,7 @@ class FriendRequestModel {
       'receiverId': receiverId,
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
+      'expireAt': Timestamp.fromDate(expireAt),
     };
   }
 
@@ -32,6 +35,7 @@ class FriendRequestModel {
       receiverId: json['receiverId'] ?? '',
       status: json['status'] ?? 'pending',
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      expireAt: (json['expireAt'] as Timestamp?)?.toDate() ?? DateTime.now().add(const Duration(days: 21)),
     );
   }
 }

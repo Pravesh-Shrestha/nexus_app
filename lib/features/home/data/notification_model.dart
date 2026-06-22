@@ -41,7 +41,7 @@ class NotificationModel {
       type: json['type'] ?? '',
       isRead: json['isRead'] ?? false,
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      expireAt: (json['expireAt'] as Timestamp?)?.toDate() ?? DateTime.now().add(const Duration(days: 20)),
+      expireAt: (json['expireAt'] as Timestamp?)?.toDate() ?? DateTime.now().add(const Duration(days: 21)),
       relatedId: json['relatedId'],
       status: json['status'],
     );
