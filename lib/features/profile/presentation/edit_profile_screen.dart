@@ -1,11 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
 import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
+import 'package:nexus_app/core/services/cloudinary_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -22,6 +26,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _phoneNumberController = TextEditingController();
   final _locationController = TextEditingController();
   String? _selectedGender;
+  String _profileImageUrl = '';
   
   String _selectedRole = 'Streamer';
   String _selectedPlaystyle = 'Crazy';
@@ -52,6 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _bioController.text = model.bio;
           _phoneNumberController.text = model.phoneNumber;
           _locationController.text = model.location;
+          _profileImageUrl = model.profileImageUrl;
           _selectedRole = model.role.isNotEmpty ? model.role : 'Streamer';
           _selectedPlaystyle = model.playstyle.isNotEmpty ? model.playstyle : 'Crazy';
           _selectedSkillLevel = model.skillLevel.isNotEmpty ? model.skillLevel : 'Pro';
@@ -327,6 +333,131 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  Future<void> _pickAvatar() async {
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surfaceHighlight,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Select Profile Picture',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const Divider(color: Colors.white10, height: 1),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.white70),
+              title: const Text('Choose from Gallery', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.white70),
+              title: const Text('Take a Photo', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 300,
+        maxHeight: 300,
+        imageQuality: 75,
+      );
+
+      if (image != null && mounted) {
+        setState(() => _isSaving = true);
+
+        // Upload to Cloudinary immediately
+        final cloudinaryUrl = await CloudinaryService().uploadImage(File(image.path));
+        
+        if (cloudinaryUrl != null) {
+          setState(() {
+            _profileImageUrl = cloudinaryUrl;
+            _isSaving = false;
+          });
+        } else {
+          setState(() => _isSaving = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload image: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildAvatarImage(String imageUrl) {
+    if (imageUrl.startsWith('data:image') || !imageUrl.startsWith('http')) {
+      try {
+        final cleanBase64 = imageUrl.contains(',') ? imageUrl.split(',')[1] : imageUrl;
+        final decodedBytes = base64Decode(cleanBase64);
+        return Image.memory(
+          decodedBytes,
+          width: 100,
+          height: 100,
+          fit: BoxFit.cover,
+        );
+      } catch (e) {
+        // Fallback
+      }
+    }
+    
+    final seedUsername = _usernameController.text.isNotEmpty ? _usernameController.text : 'default';
+    return Image.network(
+      imageUrl.isNotEmpty ? imageUrl : 'https://api.dicebear.com/7.x/adventurer/png?seed=$seedUsername',
+      width: 100,
+      height: 100,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return const SizedBox(
+          width: 100,
+          height: 100,
+          child: Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primaryPurple,
+              strokeWidth: 2,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) => Image.network(
+        'https://api.dicebear.com/7.x/adventurer/png?seed=$seedUsername',
+        width: 100,
+        height: 100,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+
   Future<void> _saveProfile() async {
     if (_currentUserModel == null) return;
     
@@ -344,6 +475,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       playstyle: _selectedPlaystyle,
       skillLevel: _selectedSkillLevel,
       favoriteGames: _selectedGames,
+      profileImageUrl: _profileImageUrl,
     );
 
     try {
@@ -401,6 +533,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Center(
+                      child: GestureDetector(
+                        onTap: _pickAvatar,
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.primaryPurple,
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primaryPurple.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                    blurRadius: 20,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: _buildAvatarImage(_profileImageUrl),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryPurple,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.background,
+                                    width: 3,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     CustomTextField(
                       controller: _fullNameController,
                       hintText: 'Full name',

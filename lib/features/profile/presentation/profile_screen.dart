@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
@@ -9,6 +12,7 @@ import 'package:nexus_app/features/profile/presentation/advanced_settings_screen
 import 'package:nexus_app/features/profile/presentation/edit_profile_screen.dart';
 import 'package:nexus_app/features/profile/presentation/change_password_screen.dart';
 import 'package:nexus_app/features/profile/presentation/terms_privacy_screen.dart';
+import 'package:nexus_app/core/services/cloudinary_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -52,6 +56,142 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     }
+  }
+
+  Future<void> _pickAndSaveAvatar() async {
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surfaceHighlight,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Select Profile Picture',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const Divider(color: Colors.white10, height: 1),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.white70),
+              title: const Text('Choose from Gallery', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.white70),
+              title: const Text('Take a Photo', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 300,
+        maxHeight: 300,
+        imageQuality: 75,
+      );
+
+      if (image != null && mounted) {
+        setState(() => _isLoading = true);
+
+        // Upload to Cloudinary
+        final cloudinaryUrl = await CloudinaryService().uploadImage(File(image.path));
+        
+        if (cloudinaryUrl != null && _userModel != null) {
+          final updatedModel = _userModel!.copyWith(profileImageUrl: cloudinaryUrl);
+          await AuthService().saveUserData(updatedModel);
+          if (mounted) {
+            setState(() {
+              _userModel = updatedModel;
+              _isLoading = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Avatar updated successfully!'),
+                backgroundColor: AppColors.successGreen,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            setState(() => _isLoading = false);
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update avatar: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildAvatarImage(String imageUrl) {
+    if (imageUrl.startsWith('data:image') || !imageUrl.startsWith('http')) {
+      try {
+        final cleanBase64 = imageUrl.contains(',') ? imageUrl.split(',')[1] : imageUrl;
+        final decodedBytes = base64Decode(cleanBase64);
+        return Image.memory(
+          decodedBytes,
+          width: 100,
+          height: 100,
+          fit: BoxFit.cover,
+        );
+      } catch (e) {
+        // Fallback
+      }
+    }
+    
+    return Image.network(
+      imageUrl,
+      width: 100,
+      height: 100,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return const SizedBox(
+          width: 100,
+          height: 100,
+          child: Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primaryPurple,
+              strokeWidth: 2,
+            ),
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) => Image.network(
+        'https://api.dicebear.com/7.x/adventurer/png?seed=default',
+        width: 100,
+        height: 100,
+        fit: BoxFit.cover,
+      ),
+    );
   }
 
   @override
@@ -113,53 +253,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   children: [
                     // Avatar with Camera Icon
-                    Stack(
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.primaryPurple,
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primaryPurple.withValues(
-                                  alpha: 0.3,
-                                ),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                            image: DecorationImage(
-                              image: NetworkImage(imageUrl),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
+                    GestureDetector(
+                      onTap: _pickAndSaveAvatar,
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
                             decoration: BoxDecoration(
-                              color: AppColors.statusOnline,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: AppColors.background,
-                                width: 3,
+                                color: AppColors.primaryPurple,
+                                width: 2,
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primaryPurple.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  blurRadius: 20,
+                                  spreadRadius: 2,
+                                ),
+                              ],
                             ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.black,
-                              size: 14,
+                            child: ClipOval(
+                              child: _buildAvatarImage(imageUrl),
                             ),
                           ),
-                        ),
-                      ],
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.statusOnline,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.background,
+                                  width: 3,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.black,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                     // Username and Badge

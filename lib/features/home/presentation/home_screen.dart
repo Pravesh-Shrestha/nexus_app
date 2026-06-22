@@ -1,12 +1,80 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
+import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/features/auth/data/user_model.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  UserModel? _userModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final data = await AuthService().getUserData(user.uid);
+        if (mounted) {
+          setState(() {
+            _userModel = data;
+          });
+        }
+      } catch (e) {
+        // Silent catch
+      }
+    }
+  }
+
+  Widget _buildAvatarImage(String imageUrl, String seed) {
+    if (imageUrl.startsWith('data:image') || !imageUrl.startsWith('http')) {
+      try {
+        final cleanBase64 = imageUrl.contains(',') ? imageUrl.split(',')[1] : imageUrl;
+        final decodedBytes = base64Decode(cleanBase64);
+        return Image.memory(
+          decodedBytes,
+          width: 36,
+          height: 36,
+          fit: BoxFit.cover,
+        );
+      } catch (e) {
+        // Fallback
+      }
+    }
+    return Image.network(
+      imageUrl.isNotEmpty ? imageUrl : 'https://api.dicebear.com/7.x/adventurer/png?seed=$seed',
+      width: 36,
+      height: 36,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Image.network(
+        'https://api.dicebear.com/7.x/adventurer/png?seed=$seed',
+        width: 36,
+        height: 36,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final model = _userModel;
+    final String fullName = model?.fullName.isNotEmpty == true ? model!.fullName : 'Gamer';
+    final String username = model?.username.isNotEmpty == true ? model!.username : 'User';
+    final String imageUrl = model?.profileImageUrl ?? '';
+    final String firstName = fullName.split(' ')[0];
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -50,9 +118,11 @@ class HomeScreen extends StatelessWidget {
                         Container(
                           width: 36,
                           height: 36,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white,
+                          ),
+                          child: ClipOval(
+                            child: _buildAvatarImage(imageUrl, username),
                           ),
                         ),
                       ],
@@ -67,9 +137,9 @@ class HomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Hello,User',
-                      style: TextStyle(
+                    Text(
+                      'Hello, $firstName',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
