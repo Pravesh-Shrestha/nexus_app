@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
@@ -16,155 +15,171 @@ class FindAllyScreen extends StatefulWidget {
 
 class _FindAllyScreenState extends State<FindAllyScreen> {
   final FriendsService _friendsService = FriendsService();
-  bool _isFriendsTab = true;
-  bool _isLoading = true;
-  
-  List<UserModel> _friends = [];
-  List<UserModel> _feedPlayers = [];
-  int _pendingRequestsCount = 0;
 
-  // Premium mock allies fallback if DB query is empty
-  final List<Map<String, dynamic>> _mockAllies = [
-    {
-      'name': 'Persona 1',
-      'avatar': 'Z',
-      'avatarColor': Colors.green,
-      'isOnline': true,
-      'badges': ['TACTICAL', 'SNIPER'],
-      'bio': 'Tactical IGL · always down to queue',
-      'rank': 'Immortal 2',
-      'game': 'Valorant',
-      'friendsCount': '1.2k',
-      'communitiesCount': '42',
-      'gameBadges': ['TACTICAL', 'SNIPER', 'Methodical', 'Shotcaller'],
-    },
-    {
-      'name': 'Nova_Strike',
-      'avatar': 'N',
-      'avatarColor': Colors.purple,
-      'isOnline': true,
-      'badges': ['SUPPORT', 'CASUAL'],
-      'bio': 'Support player looking for competitive team play',
-      'rank': 'Diamond 1',
-      'game': 'Apex Legends',
-      'friendsCount': '482',
-      'communitiesCount': '15',
-      'gameBadges': ['SUPPORT', 'CASUAL', 'Team-player'],
-    },
-    {
-      'name': 'Rift_Walker',
-      'avatar': 'R',
-      'avatarColor': Colors.teal,
-      'isOnline': false,
-      'lastSeen': 'Last seen 3h ago',
-      'badges': ['ENTRY', 'COMPETITIVE'],
-      'bio': 'Entry fragger looking for an active squad',
-      'rank': 'Gold 3',
-      'game': 'Valorant',
-      'friendsCount': '210',
-      'communitiesCount': '8',
-      'gameBadges': ['ENTRY', 'COMPETITIVE', 'Aggressive'],
-    },
-    {
-      'name': 'Pixel_Queen',
-      'avatar': 'P',
-      'avatarColor': Colors.pink,
-      'isOnline': false,
-      'lastSeen': 'Last seen 1d ago',
-      'badges': ['CREATIVE', 'CASUAL'],
-      'bio': 'Cozy gamer, mostly playing for fun and chill sessions',
-      'rank': 'Silver 2',
-      'game': 'Minecraft',
-      'friendsCount': '850',
-      'communitiesCount': '24',
-      'gameBadges': ['CREATIVE', 'CASUAL', 'Builder'],
-    },
-  ];
+  bool _isLoading = true;
+  List<FriendRequestEntry> _receivedRequests = [];
+  List<FriendRequestEntry> _sentRequests = [];
+  List<UserModel> _discoverPlayers = [];
+
+  // Track which cards are processing an action
+  final Set<String> _processingIds = {};
+
+  String? _currentUserId;
+  String? _currentUsername;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _currentUserId = user.uid;
+      _currentUsername = user.displayName ?? user.email ?? 'User';
+    }
+    await _loadData();
   }
 
   Future<void> _loadData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      try {
-        // 1. Fetch friends list profiles
-        final friendsList = await _friendsService.getFriendsProfiles(user.uid);
-        
-        // 2. Fetch recommended feed profiles
-        final recommendedList = await _friendsService.getRecommendedPlayers(user.uid);
+    if (_currentUserId == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+    try {
+      final results = await Future.wait([
+        _friendsService.getReceivedRequestsWithProfiles(_currentUserId!),
+        _friendsService.getSentRequestsWithProfiles(_currentUserId!),
+        _friendsService.getRecommendedPlayers(_currentUserId!),
+      ]);
 
-        // 3. Fetch count of pending requests from notifications subcollection
-        final requestsSnap = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .collection('notifications')
-            .where('type', isEqualTo: 'friend_request')
-            .where('status', isEqualTo: 'pending')
-            .get();
-        
-        if (mounted) {
-          setState(() {
-            _friends = friendsList;
-            _feedPlayers = recommendedList;
-            _pendingRequestsCount = requestsSnap.docs.length;
-            _isLoading = false;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      }
-    } else {
       if (mounted) {
         setState(() {
+          _receivedRequests = results[0] as List<FriendRequestEntry>;
+          _sentRequests = results[1] as List<FriendRequestEntry>;
+          _discoverPlayers = results[2] as List<UserModel>;
           _isLoading = false;
         });
       }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Color _getAvatarColor(String seed) {
-    final colors = [
-      Colors.green,
-      Colors.purple,
-      Colors.teal,
-      Colors.pink,
-      Colors.blue,
-      Colors.orange,
-      Colors.indigo
-    ];
-    final hash = seed.hashCode.abs();
-    return colors[hash % colors.length];
+  // ── Actions ──────────────────────────────────────────────────────────────
+
+  Future<void> _acceptRequest(FriendRequestEntry entry) async {
+    setState(() => _processingIds.add(entry.request.id));
+    try {
+      await _friendsService.acceptFriendRequest(
+        entry.request.senderId,
+        _currentUserId!,
+      );
+      await _loadData();
+    } catch (e) {
+      _showError('Failed to accept request');
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(entry.request.id));
+    }
   }
+
+  Future<void> _declineRequest(FriendRequestEntry entry) async {
+    setState(() => _processingIds.add(entry.request.id));
+    try {
+      await _friendsService.declineFriendRequest(
+        entry.request.senderId,
+        _currentUserId!,
+      );
+      await _loadData();
+    } catch (e) {
+      _showError('Failed to decline request');
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(entry.request.id));
+    }
+  }
+
+  Future<void> _cancelRequest(FriendRequestEntry entry) async {
+    setState(() => _processingIds.add(entry.request.id));
+    try {
+      await _friendsService.cancelFriendRequest(
+        _currentUserId!,
+        entry.request.receiverId,
+      );
+      await _loadData();
+    } catch (e) {
+      _showError('Failed to cancel request');
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(entry.request.id));
+    }
+  }
+
+  Future<void> _sendRequest(UserModel player) async {
+    setState(() => _processingIds.add(player.uid));
+    try {
+      await _friendsService.sendFriendRequest(
+        _currentUserId!,
+        _currentUsername!,
+        player.uid,
+      );
+      await _loadData();
+    } catch (e) {
+      _showError('Failed to send request');
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(player.uid));
+    }
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ── Helper ───────────────────────────────────────────────────────────────
+
+  Color _avatarColor(String uid) {
+    const colors = [
+      Color(0xFF6C63FF),
+      Color(0xFF00BCD4),
+      Color(0xFF4CAF50),
+      Color(0xFFFF7043),
+      Color(0xFFE91E63),
+      Color(0xFF9C27B0),
+      Color(0xFFFF9800),
+    ];
+    return colors[uid.hashCode.abs() % colors.length];
+  }
+
+  String _initials(UserModel u) {
+    if (u.fullName.isNotEmpty) return u.fullName[0].toUpperCase();
+    if (u.username.isNotEmpty) return u.username[0].toUpperCase();
+    return '?';
+  }
+
+  String _displayName(UserModel u) =>
+      u.fullName.isNotEmpty ? u.fullName : u.username;
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    // Decide whether to show DB players or fallback to mocks
-    final bool showDbFeed = _feedPlayers.isNotEmpty;
-    final bool showDbFriends = _friends.isNotEmpty;
-
-    // Filter which list to render based on active tab
-    final List<dynamic> activeList = _isFriendsTab
-        ? (showDbFriends ? _friends : _mockAllies.take(2).toList())
-        : (showDbFeed ? _feedPlayers : _mockAllies);
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Back Button & Explore circular indicator
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header ─────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSizes.p24, 12, AppSizes.p24, 0),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   GestureDetector(
@@ -172,10 +187,11 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: const BoxDecoration(
-                        color: Colors.transparent,
                         shape: BoxShape.circle,
+                        color: Colors.transparent,
                       ),
-                      child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                      child: const Icon(Icons.arrow_back_ios_new,
+                          color: Colors.white, size: 20),
                     ),
                   ),
                   Container(
@@ -184,347 +200,548 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.surfaceHighlight,
-                      border: Border.all(color: AppColors.primaryCyan.withValues(alpha: 0.15), width: 1.5),
+                      border: Border.all(
+                          color: AppColors.primaryCyan.withValues(alpha: 0.2),
+                          width: 1.5),
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.primaryCyan.withValues(alpha: 0.2),
-                          blurRadius: 15,
-                          spreadRadius: 2,
+                          blurRadius: 14,
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.explore_outlined, color: AppColors.primaryCyan, size: 20),
+                    child: const Icon(Icons.group_outlined,
+                        color: AppColors.primaryCyan, size: 20),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+            ),
 
-              // Title Header
-              const Text(
-                'Find Your Ally',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Discover elite players matching your DNA.',
-                style: TextStyle(
-                  color: Colors.white30,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Toggle Tab & Request Badge
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Tab Switch
-                  Container(
-                    height: 48,
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => setState(() => _isFriendsTab = true),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: _isFriendsTab ? AppColors.surfaceHighlight : Colors.transparent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'Friends',
-                              style: TextStyle(
-                                color: _isFriendsTab ? Colors.white : Colors.white30,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => setState(() => _isFriendsTab = false),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: !_isFriendsTab ? AppColors.surfaceHighlight : Colors.transparent,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'Feed',
-                              style: TextStyle(
-                                color: !_isFriendsTab ? Colors.white : Colors.white30,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSizes.p24, 20, AppSizes.p24, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Find Your Ally',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  
-                  // Requests count badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                    ),
-                    child: Text(
-                      'Requests · ${_pendingRequestsCount > 0 ? _pendingRequestsCount : (showDbFeed ? 0 : 4)}',
-                      style: const TextStyle(
-                        color: Colors.white30,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Connect with players. Build your squad.',
+                    style: TextStyle(color: Colors.white38, fontSize: 13),
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+            ),
 
-              // Demo mode warning if Firestore is empty
-              if (!_isLoading && _isFriendsTab && !showDbFriends)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryPurple.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primaryPurple.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.info_outline, color: AppColors.primaryPurple, size: 16),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Showing offline demo allies (no mutual friends in database yet).',
-                            style: TextStyle(color: AppColors.primaryPurple, fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              if (!_isLoading && !_isFriendsTab && !showDbFeed)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryPurple.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primaryPurple.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.info_outline, color: AppColors.primaryPurple, size: 16),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Showing offline demo players (no recommended users in database yet).',
-                            style: TextStyle(color: AppColors.primaryPurple, fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+            const SizedBox(height: 20),
 
-              // Allies list
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
-                    : ListView.builder(
-                        itemCount: activeList.length,
-                        itemBuilder: (context, index) {
-                          final item = activeList[index];
-                          return _buildAllyListItem(item);
-                        },
+            // ── Body ───────────────────────────────────────────────────────
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.primaryPurple))
+                  : RefreshIndicator(
+                      color: AppColors.primaryPurple,
+                      onRefresh: _loadData,
+                      child: ListView(
+                        padding: const EdgeInsets.only(bottom: 32),
+                        children: [
+                          // 1 — Received Requests
+                          _buildSection(
+                            icon: Icons.person_add_alt_1_rounded,
+                            iconColor: const Color(0xFF00E5AA),
+                            title: 'Friend Requests',
+                            subtitle: 'People who want to connect with you',
+                            count: _receivedRequests.length,
+                            child: _receivedRequests.isEmpty
+                                ? _emptyState(
+                                    icon: Icons.inbox_rounded,
+                                    message:
+                                        'No incoming friend requests right now.',
+                                  )
+                                : Column(
+                                    children: _receivedRequests
+                                        .map((e) =>
+                                            _receivedCard(e))
+                                        .toList(),
+                                  ),
+                          ),
+
+                          // 2 — Sent Requests
+                          _buildSection(
+                            icon: Icons.send_rounded,
+                            iconColor: AppColors.primaryCyan,
+                            title: 'Requests Sent',
+                            subtitle: 'Waiting for their response',
+                            count: _sentRequests.length,
+                            child: _sentRequests.isEmpty
+                                ? _emptyState(
+                                    icon: Icons.hourglass_empty_rounded,
+                                    message: 'You haven\'t sent any requests.',
+                                  )
+                                : Column(
+                                    children: _sentRequests
+                                        .map((e) => _sentCard(e))
+                                        .toList(),
+                                  ),
+                          ),
+
+                          // 3 — Discover Players
+                          _buildSection(
+                            icon: Icons.explore_rounded,
+                            iconColor: AppColors.primaryPurple,
+                            title: 'Discover Players',
+                            subtitle: 'New people you can connect with',
+                            count: _discoverPlayers.length,
+                            child: _discoverPlayers.isEmpty
+                                ? _emptyState(
+                                    icon: Icons.people_outline_rounded,
+                                    message:
+                                        'No new players to discover yet.',
+                                  )
+                                : Column(
+                                    children: _discoverPlayers
+                                        .map((p) => _discoverCard(p))
+                                        .toList(),
+                                  ),
+                          ),
+                        ],
                       ),
-              ),
-            ],
-          ),
+                    ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildAllyListItem(dynamic item) {
-    final bool isUserModel = item is UserModel;
-    
-    final String name = isUserModel
-        ? (item.fullName.isNotEmpty ? item.fullName : item.username)
-        : (item['name'] as String);
+  // ── Section wrapper ───────────────────────────────────────────────────────
 
-    final String username = isUserModel
-        ? item.username
-        : (item['name'] as String);
-
-    final String avatar = username.isNotEmpty ? username[0].toUpperCase() : 'A';
-    
-    final Color avatarColor = isUserModel
-        ? _getAvatarColor(item.uid)
-        : (item['avatarColor'] as Color? ?? Colors.purple);
-
-    final bool isOnline = isUserModel ? true : (item['isOnline'] as bool? ?? false);
-    
-    final List<String> badges = isUserModel
-        ? [item.role, item.playstyle].where((b) => b.isNotEmpty).toList()
-        : List<String>.from(item['badges'] ?? ['TACTICAL', 'SNIPER']);
-
-    if (badges.isEmpty) {
-      badges.addAll(['TACTICAL', 'SNIPER']);
-    }
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => isUserModel
-                ? ViewFriendScreen(userModel: item)
-                : ViewFriendScreen(allyData: item),
-          ),
-        ).then((_) => _loadData()); // Reload when coming back
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+  Widget _buildSection({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required int count,
+    required Widget child,
+  }) {
+    return Padding(
+      padding:
+          const EdgeInsets.fromLTRB(AppSizes.p24, 0, AppSizes.p24, 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header
+          Row(
             children: [
-              // Avatar Stack with Online status
-              Stack(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: avatarColor.withValues(alpha: 0.2),
-                    ),
-                    child: Center(
-                      child: Text(
-                        avatar,
-                        style: TextStyle(
-                          color: avatarColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isOnline ? AppColors.statusOnline : Colors.grey,
-                        border: Border.all(color: AppColors.surface, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
               ),
-              const SizedBox(width: 16),
-
-              // Title and Badges
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    
-                    // Badges row
                     Row(
-                      children: badges
-                          .map((badge) => Container(
-                                margin: const EdgeInsets.only(right: 6),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceHighlight,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: Colors.white10),
-                                ),
-                                child: Text(
-                                  badge,
-                                  style: const TextStyle(
-                                    color: Colors.white30,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Action Msg button (Right Arrow or Msg)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isOnline
-                        ? AppColors.statusOnline.withValues(alpha: 0.5)
-                        : Colors.white12,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _isFriendsTab ? Icons.chat_bubble_outline : Icons.arrow_forward_ios,
-                      color: isOnline ? AppColors.statusOnline : Colors.white30,
-                      size: 14,
-                    ),
-                    if (_isFriendsTab) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        'Msg',
-                        style: TextStyle(
-                          color: isOnline ? AppColors.statusOnline : Colors.white30,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ],
+                        if (count > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: iconColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '$count',
+                              style: TextStyle(
+                                color: iconColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                          color: Colors.white38, fontSize: 11),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          child,
+        ],
+      ),
+    );
+  }
+
+  // ── Received request card ─────────────────────────────────────────────────
+
+  Widget _receivedCard(FriendRequestEntry entry) {
+    final u = entry.user;
+    final color = _avatarColor(u.uid);
+    final processing = _processingIds.contains(entry.request.id);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context)
+            .push(MaterialPageRoute(
+                builder: (_) => ViewFriendScreen(userModel: u)))
+            .then((_) => _loadData());
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+              color: const Color(0xFF00E5AA).withValues(alpha: 0.18), width: 1),
         ),
+        child: Row(
+          children: [
+            // Avatar
+            _avatar(u, color),
+            const SizedBox(width: 14),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_displayName(u),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                  if (u.username.isNotEmpty)
+                    Text('@${u.username}',
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 11)),
+                ],
+              ),
+            ),
+            // Buttons
+            if (processing)
+              const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primaryPurple))
+            else
+              Row(
+                children: [
+                  // Decline
+                  GestureDetector(
+                    onTap: () => _declineRequest(entry),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color:
+                                Colors.redAccent.withValues(alpha: 0.3)),
+                      ),
+                      child: const Icon(Icons.close_rounded,
+                          color: Colors.redAccent, size: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Accept
+                  GestureDetector(
+                    onTap: () => _acceptRequest(entry),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00E5AA)
+                            .withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: const Color(0xFF00E5AA)
+                                .withValues(alpha: 0.4)),
+                      ),
+                      child: const Icon(Icons.check_rounded,
+                          color: Color(0xFF00E5AA), size: 18),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Sent request card ─────────────────────────────────────────────────────
+
+  Widget _sentCard(FriendRequestEntry entry) {
+    final u = entry.user;
+    final color = _avatarColor(u.uid);
+    final processing = _processingIds.contains(entry.request.id);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context)
+            .push(MaterialPageRoute(
+                builder: (_) => ViewFriendScreen(userModel: u)))
+            .then((_) => _loadData());
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        child: Row(
+          children: [
+            _avatar(u, color),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_displayName(u),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                  if (u.username.isNotEmpty)
+                    Text('@${u.username}',
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 11)),
+                ],
+              ),
+            ),
+            // Pending chip + Cancel
+            if (processing)
+              const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primaryPurple))
+            else
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryCyan.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'Pending',
+                      style: TextStyle(
+                          color: AppColors.primaryCyan,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _cancelRequest(entry),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: const Icon(Icons.close_rounded,
+                          color: Colors.white38, size: 16),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Discover card ─────────────────────────────────────────────────────────
+
+  Widget _discoverCard(UserModel player) {
+    final color = _avatarColor(player.uid);
+    final processing = _processingIds.contains(player.uid);
+
+    final List<String> badges = [player.role, player.playstyle]
+        .where((b) => b.isNotEmpty)
+        .toList();
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context)
+            .push(MaterialPageRoute(
+                builder: (_) => ViewFriendScreen(userModel: player)))
+            .then((_) => _loadData());
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        child: Row(
+          children: [
+            _avatar(player, color),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_displayName(player),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                  if (badges.isNotEmpty) ...[
+                    const SizedBox(height: 5),
+                    Wrap(
+                      spacing: 5,
+                      children: badges
+                          .map((b) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceHighlight,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border:
+                                      Border.all(color: Colors.white10),
+                                ),
+                                child: Text(b,
+                                    style: const TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold)),
+                              ))
+                          .toList(),
+                    ),
+                  ] else
+                    Text('@${player.username}',
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 11)),
+                ],
+              ),
+            ),
+            // Add button
+            if (processing)
+              const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primaryPurple))
+            else
+              GestureDetector(
+                onTap: () => _sendRequest(player),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        AppColors.primaryPurple,
+                        AppColors.primaryCyan,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'Add',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Shared avatar widget ──────────────────────────────────────────────────
+
+  Widget _avatar(UserModel u, Color color) {
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: 0.18),
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 1.5),
+      ),
+      child: Center(
+        child: Text(
+          _initials(u),
+          style: TextStyle(
+              color: color, fontWeight: FontWeight.bold, fontSize: 17),
+        ),
+      ),
+    );
+  }
+
+  // ── Empty state ───────────────────────────────────────────────────────────
+
+  Widget _emptyState({required IconData icon, required String message}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white12, size: 32),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white30, fontSize: 12),
+          ),
+        ],
       ),
     );
   }

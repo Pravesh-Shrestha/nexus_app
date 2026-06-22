@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Friends Section
+                      // Friends Section (only shown when user has friends)
                       if (_friends.isNotEmpty) ...[
                         _buildSectionHeader(
                           'Friends',
@@ -247,11 +247,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                      ] else ...[
-                        // Mock Friends Fallback
+                      ],
+
+                      // Recommended Players Section (only shown when there are recommendations)
+                      if (_recommended.isNotEmpty) ...[
                         _buildSectionHeader(
-                          'Friends (Demo)',
-                          'Find Allies',
+                          'Recommended Players',
+                          'View More',
                           onTapAction: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
@@ -263,171 +265,32 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 16),
                         SizedBox(
                           height: 100,
-                          child: ListView(
+                          child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-                            children: [
-                              _buildPlayerAvatar(
-                                'Persona 1',
-                                'https://i.pravatar.cc/150?img=11',
-                                true,
-                                AppColors.primaryCyan,
+                            itemCount: _recommended.length,
+                            itemBuilder: (context, index) {
+                              final player = _recommended[index];
+                              final name = player.fullName.isNotEmpty ? player.fullName.split(' ')[0] : player.username;
+                              final avatarUrl = _getPlayerAvatarUrl(player);
+                              return _buildPlayerAvatar(
+                                name,
+                                avatarUrl,
+                                false,
+                                Colors.grey,
                                 onTap: () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (_) => const ViewFriendScreen(
-                                        allyData: {
-                                          'name': 'Persona 1',
-                                          'avatar': 'Z',
-                                          'avatarColor': Colors.green,
-                                          'isOnline': true,
-                                          'badges': ['TACTICAL', 'SNIPER'],
-                                          'bio': 'Tactical IGL · always down to queue',
-                                          'rank': 'Immortal 2',
-                                          'game': 'Valorant',
-                                          'friendsCount': '1.2k',
-                                          'communitiesCount': '42',
-                                          'gameBadges': ['TACTICAL', 'SNIPER', 'Methodical', 'Shotcaller'],
-                                        },
-                                      ),
+                                      builder: (_) => ViewFriendScreen(userModel: player),
                                     ),
                                   ).then((_) => _loadHomeData());
                                 },
-                              ),
-                              _buildPlayerAvatar(
-                                'Nova',
-                                'https://i.pravatar.cc/150?img=12',
-                                true,
-                                AppColors.primaryPurple,
-                                onTap: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const ViewFriendScreen(
-                                        allyData: {
-                                          'name': 'Nova_Strike',
-                                          'avatar': 'N',
-                                          'avatarColor': Colors.purple,
-                                          'isOnline': true,
-                                          'badges': ['SUPPORT', 'CASUAL'],
-                                          'bio': 'Support player looking for competitive team play',
-                                          'rank': 'Diamond 1',
-                                          'game': 'Apex Legends',
-                                          'friendsCount': '482',
-                                          'communitiesCount': '15',
-                                          'gameBadges': ['SUPPORT', 'CASUAL', 'Team-player'],
-                                        },
-                                      ),
-                                    ),
-                                  ).then((_) => _loadHomeData());
-                                },
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 32),
                       ],
-
-                      // Recommended Players Section
-                      _buildSectionHeader(
-                        'Recommended Players',
-                        'View More',
-                        onTapAction: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const FindAllyScreen(),
-                            ),
-                          ).then((_) => _loadHomeData());
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        height: 100,
-                        child: _recommended.isNotEmpty
-                            ? ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-                                itemCount: _recommended.length,
-                                itemBuilder: (context, index) {
-                                  final player = _recommended[index];
-                                  final name = player.fullName.isNotEmpty ? player.fullName.split(' ')[0] : player.username;
-                                  final avatarUrl = _getPlayerAvatarUrl(player);
-                                  return _buildPlayerAvatar(
-                                    name,
-                                    avatarUrl,
-                                    false,
-                                    Colors.grey,
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => ViewFriendScreen(userModel: player),
-                                        ),
-                                      ).then((_) => _loadHomeData());
-                                    },
-                                  );
-                                },
-                              )
-                            : ListView(
-                                scrollDirection: Axis.horizontal,
-                                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-                                children: [
-                                  _buildPlayerAvatar(
-                                    'Pixel',
-                                    'https://i.pravatar.cc/150?img=47',
-                                    false,
-                                    AppColors.primaryCyan,
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => const ViewFriendScreen(
-                                            allyData: {
-                                              'name': 'Pixel_Queen',
-                                              'avatar': 'P',
-                                              'avatarColor': Colors.pink,
-                                              'isOnline': false,
-                                              'badges': ['CREATIVE', 'CASUAL'],
-                                              'bio': 'Cozy gamer, mostly playing for fun and chill sessions',
-                                              'rank': 'Silver 2',
-                                              'game': 'Minecraft',
-                                              'friendsCount': '850',
-                                              'communitiesCount': '24',
-                                              'gameBadges': ['CREATIVE', 'CASUAL', 'Builder'],
-                                            },
-                                          ),
-                                        ),
-                                      ).then((_) => _loadHomeData());
-                                    },
-                                  ),
-                                  _buildPlayerAvatar(
-                                    'Rift',
-                                    'https://i.pravatar.cc/150?img=14',
-                                    false,
-                                    Colors.grey,
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => const ViewFriendScreen(
-                                            allyData: {
-                                              'name': 'Rift_Walker',
-                                              'avatar': 'R',
-                                              'avatarColor': Colors.teal,
-                                              'isOnline': false,
-                                              'badges': ['ENTRY', 'COMPETITIVE'],
-                                              'bio': 'Entry fragger looking for an active squad',
-                                              'rank': 'Gold 3',
-                                              'game': 'Valorant',
-                                              'friendsCount': '210',
-                                              'communitiesCount': '8',
-                                              'gameBadges': ['ENTRY', 'COMPETITIVE', 'Aggressive'],
-                                            },
-                                          ),
-                                        ),
-                                      ).then((_) => _loadHomeData());
-                                    },
-                                  ),
-                                ],
-                              ),
-                      ),
-                      const SizedBox(height: 32),
 
                       // Trending Communities
                       _buildSectionHeader('Trending Communities', 'Explore All'),
