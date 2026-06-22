@@ -1,15 +1,86 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/auth/presentation/login_screen.dart';
 import 'package:nexus_app/features/profile/presentation/advanced_settings_screen.dart';
+import 'package:nexus_app/features/profile/presentation/edit_profile_screen.dart';
+import 'package:nexus_app/features/profile/presentation/change_password_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  UserModel? _userModel;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final data = await AuthService().getUserData(user.uid);
+        if (mounted) {
+          setState(() {
+            _userModel = data;
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primaryPurple,
+          ),
+        ),
+      );
+    }
+
+    final model = _userModel;
+    final String fullName = model?.fullName.isNotEmpty == true ? model!.fullName : 'Viper Protocol';
+    final String username = model?.username.isNotEmpty == true ? model!.username : 'Viper_Protocol';
+    final String skillLevel = model?.skillLevel.isNotEmpty == true ? model!.skillLevel.toUpperCase() : 'PRO LEAGUE';
+    final String role = model?.role.isNotEmpty == true ? model!.role : 'Streamer';
+    final String playstyle = model?.playstyle.isNotEmpty == true ? model!.playstyle : 'Crazy';
+    final List<String> favoriteGames = model?.favoriteGames ?? ['Valorant', 'FreeFire'];
+    final String bio = model != null
+        ? '$role • $playstyle Gamer\nPlays: ${favoriteGames.isNotEmpty ? favoriteGames.join(", ") : "No games selected"}'
+        : 'Tactical specialist. 24/7 competitive grind.\nSquad leader of [NEON_RAIDERS].';
+
+    final String imageUrl = model?.profileImageUrl.isNotEmpty == true
+        ? model!.profileImageUrl
+        : 'https://api.dicebear.com/7.x/adventurer/png?seed=$username';
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -59,10 +130,8 @@ class ProfileScreen extends StatelessWidget {
                                 spreadRadius: 2,
                               ),
                             ],
-                            image: const DecorationImage(
-                              image: NetworkImage(
-                                'https://i.pravatar.cc/150?img=15',
-                              ),
+                            image: DecorationImage(
+                              image: NetworkImage(imageUrl),
                               fit: BoxFit.cover,
                             ),
                           ),
@@ -94,9 +163,9 @@ class ProfileScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
-                          'Viper_Protocol',
-                          style: TextStyle(
+                        Text(
+                          fullName,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -115,9 +184,9 @@ class ProfileScreen extends StatelessWidget {
                               color: Colors.green.withValues(alpha: 0.5),
                             ),
                           ),
-                          child: const Text(
-                            'PRO LEAGUE',
-                            style: TextStyle(
+                          child: Text(
+                            skillLevel,
+                            style: const TextStyle(
                               color: Colors.green,
                               fontSize: 10,
                               fontWeight: FontWeight.bold,
@@ -126,14 +195,22 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '@$username',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 14,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     // Bio
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 40.0),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40.0),
                       child: Text(
-                        'Tactical specialist. 24/7 competitive grind.\nSquad leader of [NEON_RAIDERS].',
+                        bio,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,
                           height: 1.5,
@@ -186,6 +263,14 @@ class ProfileScreen extends StatelessWidget {
                         Icons.edit,
                         'Edit Profile',
                         Colors.greenAccent,
+                        onTap: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const EditProfileScreen(),
+                            ),
+                          );
+                          _loadUserData();
+                        },
                       ),
                       const Divider(color: Colors.white10, height: 1),
                       _buildSettingsTile(
@@ -198,6 +283,13 @@ class ProfileScreen extends StatelessWidget {
                         Icons.lock_outline,
                         'Change Password',
                         Colors.tealAccent,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const ChangePasswordScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

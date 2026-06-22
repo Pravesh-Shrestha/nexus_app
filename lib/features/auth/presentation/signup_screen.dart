@@ -35,9 +35,14 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _signup() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+    if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
+        _fullNameController.text.isEmpty ||
+        _usernameController.text.isEmpty ||
+        _dobController.text.isEmpty ||
+        _selectedGender == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email and password')),
+        const SnackBar(content: Text('Please fill out all fields')),
       );
       return;
     }
@@ -50,7 +55,14 @@ class _SignupScreenState extends State<SignupScreen> {
       );
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+          MaterialPageRoute(
+            builder: (_) => ProfileSetupScreen(
+              fullName: _fullNameController.text.trim(),
+              username: _usernameController.text.trim(),
+              dob: _dobController.text.trim(),
+              gender: _selectedGender!,
+            ),
+          ),
         );
       }
     } catch (e) {

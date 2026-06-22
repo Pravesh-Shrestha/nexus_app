@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_app/features/auth/presentation/setup_success_screen.dart';
+import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/features/auth/data/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({super.key});
+  final String fullName;
+  final String username;
+  final String dob;
+  final String gender;
+
+  const ProfileSetupScreen({
+    super.key,
+    required this.fullName,
+    required this.username,
+    required this.dob,
+    required this.gender,
+  });
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -232,10 +246,40 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
               child: GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const SetupSuccessScreen()),
+                onTap: () async {
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user == null) return;
+
+                  final userModel = UserModel(
+                    uid: user.uid,
+                    email: user.email ?? '',
+                    fullName: widget.fullName,
+                    username: widget.username,
+                    dob: widget.dob,
+                    gender: widget.gender,
+                    role: _selectedRole,
+                    favoriteGames: _selectedGames,
+                    playstyle: _selectedPlaystyle,
+                    skillLevel: _selectedSkillLevel,
                   );
+
+                  final navigator = Navigator.of(context);
+                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+                  try {
+                    await AuthService().saveUserData(userModel);
+                    if (mounted) {
+                      navigator.pushReplacement(
+                        MaterialPageRoute(builder: (_) => const SetupSuccessScreen()),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      scaffoldMessenger.showSnackBar(
+                        SnackBar(content: Text('Failed to save profile: $e')),
+                      );
+                    }
+                  }
                 },
                 child: Container(
                   width: double.infinity,

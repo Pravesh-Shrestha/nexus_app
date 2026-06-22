@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:nexus_app/features/auth/data/user_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -80,6 +82,62 @@ class AuthService {
   Future<void> signOut() async {
     await _googleSignIn.signOut();
     await _auth.signOut();
+  }
+
+  // Save User Data to Firestore
+  Future<void> saveUserData(UserModel user) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .set(user.toJson(), SetOptions(merge: true));
+    } catch (e) {
+      throw 'Failed to save profile. Please try again.';
+    }
+  }
+
+  // Get User Data from Firestore
+  Future<UserModel?> getUserData(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (doc.exists && doc.data() != null) {
+        return UserModel.fromJson(doc.data()!);
+      }
+      return null;
+    } catch (e) {
+      throw 'Failed to load profile. Please try again.';
+    }
+  }
+
+  // Update Password
+  Future<void> updatePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null || user.email == null) {
+        throw 'No authenticated user found.';
+      }
+
+      // Re-authenticate
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      await user.reauthenticateWithCredential(credential);
+
+      // Update password
+      await user.updatePassword(newPassword);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        throw 'The current password you entered is incorrect.';
+      }
+      throw _handleFirebaseError(e);
+    } catch (e) {
+      throw 'An error occurred while updating the password.';
+    }
   }
 
   // Helper method to map Firebase errors to human-readable strings
