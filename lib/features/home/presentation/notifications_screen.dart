@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
+import 'package:nexus_app/features/home/data/notification_model.dart';
+import 'package:nexus_app/features/home/data/notification_service.dart';
+import 'package:nexus_app/features/friends/data/friends_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -10,87 +14,214 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  final List<Map<String, dynamic>> _notifications = [
+  final NotificationService _notificationService = NotificationService();
+  final FriendsService _friendsService = FriendsService();
+  
+  List<NotificationModel> _dbNotifications = [];
+  bool _isLoading = true;
+  String _currentUserId = '';
+
+  // Local mockup fallback if DB is empty
+  List<Map<String, dynamic>> _mockNotifications = [
     {
-      'id': '1',
+      'id': 'mock_1',
       'type': 'friend_request',
       'title': 'Phantom_Ace sent you a friend request',
       'time': '12m ago',
       'isRead': false,
-      'icon': Icons.person_add_alt_1_outlined,
-      'iconBgColor': Color(0xFF1E1736),
-      'iconColor': Color(0xFFB08CFF),
-      'status': 'pending', // 'pending', 'accepted', 'declined'
+      'status': 'pending',
       'section': 'TODAY',
+      'relatedId': 'phantom_ace_mock_uid',
     },
     {
-      'id': '2',
+      'id': 'mock_2',
       'type': 'gg',
       'title': 'Nova_Strike and 88 others GG\'d your clutch VOD',
       'time': '1h ago',
       'isRead': false,
-      'iconText': 'GG',
-      'iconBgColor': Color(0xFF152A20),
-      'iconColor': Color(0xFF00FF87),
       'section': 'TODAY',
     },
     {
-      'id': '3',
+      'id': 'mock_3',
       'type': 'rsvp',
       'title': 'Grand Finals starts in 2 hours — you RSVP\'d',
       'time': '2h ago',
       'isRead': true,
-      'icon': Icons.access_time_filled_outlined,
-      'iconBgColor': Color(0xFF331525),
-      'iconColor': Color(0xFFFF4081),
       'section': 'TODAY',
     },
     {
-      'id': '4',
+      'id': 'mock_4',
       'type': 'invite',
       'title': 'Valorant Tactics invited you to join the community',
       'time': 'Yesterday',
       'isRead': true,
-      'icon': Icons.group_outlined,
-      'iconBgColor': Color(0xFF132B30),
-      'iconColor': Color(0xFF00E5FF),
       'section': 'EARLIER',
     },
     {
-      'id': '5',
+      'id': 'mock_5',
       'type': 'mention',
       'title': 'Pixel_Queen mentioned you in Elite Setups',
       'time': 'Yesterday',
       'isRead': true,
-      'icon': Icons.alternate_email_outlined,
-      'iconBgColor': Color(0xFF1E1736),
-      'iconColor': Color(0xFF8A2BE2),
       'section': 'EARLIER',
     },
   ];
 
-  void _markAllAsRead() {
-    setState(() {
-      for (var notification in _notifications) {
-        notification['isRead'] = true;
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
   }
 
-  void _handleFriendRequest(String id, String newStatus) {
-    setState(() {
-      final index = _notifications.indexWhere((element) => element['id'] == id);
-      if (index != -1) {
-        _notifications[index]['status'] = newStatus;
-        _notifications[index]['isRead'] = true;
+  Future<void> _loadNotifications() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _currentUserId = user.uid;
+      try {
+        final list = await _notificationService.getNotifications(user.uid);
+        if (mounted) {
+          setState(() {
+            _dbNotifications = list;
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    if (_currentUserId.isEmpty) return;
+    
+    // If we are using the DB list
+    if (_dbNotifications.isNotEmpty) {
+      setState(() {
+        _isLoading = true;
+      });
+      try {
+        await _notificationService.markAllAsRead(_currentUserId);
+        await _loadNotifications();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error marking read: $e'), backgroundColor: Colors.redAccent),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+      // Local mockup mark read
+      setState(() {
+        for (var notif in _mockNotifications) {
+          notif['isRead'] = true;
+        }
+      });
+    }
+  }
+
+  Future<void> _handleFriendRequest(String id, String relatedId, String newStatus) async {
+    final isMock = id.startsWith('mock_');
+
+    if (isMock) {
+      setState(() {
+        final index = _mockNotifications.indexWhere((element) => element['id'] == id);
+        if (index != -1) {
+          _mockNotifications[index]['status'] = newStatus;
+          _mockNotifications[index]['isRead'] = true;
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Mock request ${newStatus == 'accepted' ? 'accepted' : 'declined'} (Offline Demo)'),
+          backgroundColor: AppColors.statusOnline,
+        ),
+      );
+      return;
+    }
+
+    if (_currentUserId.isEmpty || relatedId.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
     });
+
+    try {
+      if (newStatus == 'accepted') {
+        await _friendsService.acceptFriendRequest(relatedId, _currentUserId, id);
+      } else {
+        await _friendsService.declineFriendRequest(relatedId, _currentUserId, id);
+      }
+      await _loadNotifications();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Friend request ${newStatus == 'accepted' ? 'accepted' : 'declined'}.'),
+            backgroundColor: AppColors.statusOnline,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update request: $e'), backgroundColor: Colors.redAccent),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 2) return 'Yesterday';
+    return '${diff.inDays}d ago';
+  }
+
+  String _getSection(DateTime dateTime) {
+    final now = DateTime.now();
+    if (dateTime.year == now.year && dateTime.month == now.month && dateTime.day == now.day) {
+      return 'TODAY';
+    }
+    return 'EARLIER';
   }
 
   @override
   Widget build(BuildContext context) {
-    final todayNotifications = _notifications.where((item) => item['section'] == 'TODAY').toList();
-    final earlierNotifications = _notifications.where((item) => item['section'] == 'EARLIER').toList();
+    // Determine which data to show: DB notifications if any, fallback to mocks
+    final hasDb = _dbNotifications.isNotEmpty;
+    
+    final List<Map<String, dynamic>> itemsToShow = hasDb
+        ? _dbNotifications.map((n) => {
+              'id': n.id,
+              'type': n.type,
+              'title': n.title,
+              'time': _formatTimeAgo(n.createdAt),
+              'isRead': n.isRead,
+              'status': n.status,
+              'section': _getSection(n.createdAt),
+              'relatedId': n.relatedId,
+            }).toList()
+        : _mockNotifications;
+
+    final todayNotifications = itemsToShow.where((item) => item['section'] == 'TODAY').toList();
+    final earlierNotifications = itemsToShow.where((item) => item['section'] == 'EARLIER').toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -103,62 +234,94 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ),
       ),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title & Mark All Read
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Notifications',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                  // Title & Mark All Read
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Notifications',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _markAllAsRead,
+                          child: const Text(
+                            'Mark all read',
+                            style: TextStyle(
+                              color: AppColors.primaryCyan,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  TextButton(
-                    onPressed: _markAllAsRead,
-                    child: const Text(
-                      'Mark all read',
-                      style: TextStyle(
-                        color: AppColors.primaryCyan,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                  const SizedBox(height: 16),
+                  
+                  // Empty State or List
+                  Expanded(
+                    child: itemsToShow.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.notifications_off_outlined, color: Colors.white12, size: 64),
+                                SizedBox(height: 16),
+                                Text(
+                                  'All caught up!',
+                                  style: TextStyle(color: Colors.white24, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: AppSizes.p20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (!hasDb)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 16, left: 4),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryPurple.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: AppColors.primaryPurple.withValues(alpha: 0.25)),
+                                      ),
+                                      child: const Text(
+                                        'Offline Demo Mode (Firestore notifications empty)',
+                                        style: TextStyle(color: AppColors.primaryPurple, fontSize: 11, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                if (todayNotifications.isNotEmpty) ...[
+                                  _buildSectionHeader('TODAY'),
+                                  ...todayNotifications.map((item) => _buildNotificationCard(item)),
+                                  const SizedBox(height: 24),
+                                ],
+                                if (earlierNotifications.isNotEmpty) ...[
+                                  _buildSectionHeader('EARLIER'),
+                                  ...earlierNotifications.map((item) => _buildNotificationCard(item)),
+                                ],
+                                const SizedBox(height: 32),
+                              ],
+                            ),
+                          ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Notification Items List
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (todayNotifications.isNotEmpty) ...[
-                      _buildSectionHeader('TODAY'),
-                      ...todayNotifications.map((item) => _buildNotificationCard(item)),
-                      const SizedBox(height: 24),
-                    ],
-                    if (earlierNotifications.isNotEmpty) ...[
-                      _buildSectionHeader('EARLIER'),
-                      ...earlierNotifications.map((item) => _buildNotificationCard(item)),
-                    ],
-                    const SizedBox(height: 32),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -179,9 +342,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildNotificationCard(Map<String, dynamic> item) {
-    final bool isFriendRequest = item['type'] == 'friend_request';
+    final String type = item['type'] ?? '';
+    final bool isFriendRequest = type == 'friend_request';
     final String status = item['status'] ?? '';
     final bool isRead = item['isRead'] ?? false;
+    final String id = item['id'] ?? '';
+    final String relatedId = item['relatedId'] ?? '';
+
+    // Map UI properties based on type
+    IconData icon = Icons.notifications_none;
+    String? iconText;
+    Color iconBgColor = const Color(0xFF1E1736);
+    Color iconColor = Colors.white;
+
+    switch (type) {
+      case 'friend_request':
+        icon = Icons.person_add_alt_1_outlined;
+        iconBgColor = const Color(0xFF1E1736);
+        iconColor = const Color(0xFFB08CFF);
+        break;
+      case 'gg':
+        iconText = 'GG';
+        iconBgColor = const Color(0xFF152A20);
+        iconColor = const Color(0xFF00FF87);
+        break;
+      case 'rsvp':
+        icon = Icons.access_time_filled_outlined;
+        iconBgColor = const Color(0xFF331525);
+        iconColor = const Color(0xFFFF4081);
+        break;
+      case 'invite':
+        icon = Icons.group_outlined;
+        iconBgColor = const Color(0xFF132B30);
+        iconColor = const Color(0xFF00E5FF);
+        break;
+      case 'mention':
+        icon = Icons.alternate_email_outlined;
+        iconBgColor = const Color(0xFF1E1736);
+        iconColor = const Color(0xFF8A2BE2);
+        break;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -203,22 +403,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: item['iconBgColor'] as Color,
+                    color: iconBgColor,
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: item['iconText'] != null
+                    child: iconText != null
                         ? Text(
-                            item['iconText'] as String,
+                            iconText,
                             style: TextStyle(
-                              color: item['iconColor'] as Color,
+                              color: iconColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
                           )
                         : Icon(
-                            item['icon'] as IconData,
-                            color: item['iconColor'] as Color,
+                            icon,
+                            color: iconColor,
                             size: 22,
                           ),
                   ),
@@ -284,7 +484,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           ),
                           elevation: 0,
                         ),
-                        onPressed: () => _handleFriendRequest(item['id'] as String, 'accepted'),
+                        onPressed: () => _handleFriendRequest(id, relatedId, 'accepted'),
                         child: const Text(
                           'Accept',
                           style: TextStyle(
@@ -304,7 +504,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        onPressed: () => _handleFriendRequest(item['id'] as String, 'declined'),
+                        onPressed: () => _handleFriendRequest(id, relatedId, 'declined'),
                         child: const Text(
                           'Decline',
                           style: TextStyle(

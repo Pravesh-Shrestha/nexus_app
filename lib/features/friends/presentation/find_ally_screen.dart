@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
+import 'package:nexus_app/features/auth/data/user_model.dart';
+import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/friends/presentation/view_friend_screen.dart';
 
 class FindAllyScreen extends StatefulWidget {
@@ -11,9 +15,16 @@ class FindAllyScreen extends StatefulWidget {
 }
 
 class _FindAllyScreenState extends State<FindAllyScreen> {
+  final FriendsService _friendsService = FriendsService();
   bool _isFriendsTab = true;
+  bool _isLoading = true;
+  
+  List<UserModel> _friends = [];
+  List<UserModel> _feedPlayers = [];
+  int _pendingRequestsCount = 0;
 
-  final List<Map<String, dynamic>> _allies = [
+  // Premium mock allies fallback if DB query is empty
+  final List<Map<String, dynamic>> _mockAllies = [
     {
       'name': 'Persona 1',
       'avatar': 'Z',
@@ -71,9 +82,79 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _currentUserId = user.uid;
+      try {
+        // 1. Fetch friends list profiles
+        final friendsList = await _friendsService.getFriendsProfiles(user.uid);
+        
+        // 2. Fetch recommended feed profiles
+        final recommendedList = await _friendsService.getRecommendedPlayers(user.uid);
+
+        // 3. Fetch count of pending requests from notifications subcollection
+        final requestsSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('notifications')
+            .where('type', isEqualTo: 'friend_request')
+            .where('status', isEqualTo: 'pending')
+            .get();
+        
+        if (mounted) {
+          setState(() {
+            _friends = friendsList;
+            _feedPlayers = recommendedList;
+            _pendingRequestsCount = requestsSnap.docs.length;
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Color _getAvatarColor(String seed) {
+    final colors = [
+      Colors.green,
+      Colors.purple,
+      Colors.teal,
+      Colors.pink,
+      Colors.blue,
+      Colors.orange,
+      Colors.indigo
+    ];
+    final hash = seed.hashCode.abs();
+    return colors[hash % colors.length];
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final onlineAllies = _allies.where((item) => item['isOnline']).toList();
-    final offlineAllies = _allies.where((item) => !item['isOnline']).toList();
+    // Decide whether to show DB players or fallback to mocks
+    final bool showDbFeed = _feedPlayers.isNotEmpty;
+    final bool showDbFriends = _friends.isNotEmpty;
+
+    // Filter which list to render based on active tab
+    final List<dynamic> activeList = _isFriendsTab
+        ? (showDbFriends ? _friends : _mockAllies.take(2).toList())
+        : (showDbFeed ? _feedPlayers : _mockAllies);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -83,7 +164,7 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back Button & Search Circular Radar
+              // Back Button & Explore circular indicator
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -138,11 +219,11 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Toggle & Request badge row
+              // Toggle Tab & Request Badge
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Tab switches
+                  // Tab Switch
                   Container(
                     height: 48,
                     padding: const EdgeInsets.all(4),
@@ -200,9 +281,9 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                     ),
-                    child: const Text(
-                      'Requests · 4',
-                      style: TextStyle(
+                    child: Text(
+                      'Requests · ${_pendingRequestsCount > 0 ? _pendingRequestsCount : (showDbFeed ? 0 : 4)}',
+                      style: const TextStyle(
                         color: Colors.white30,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -213,21 +294,67 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
               ),
               const SizedBox(height: 28),
 
+              // Demo mode warning if Firestore is empty
+              if (!_isLoading && _isFriendsTab && !showDbFriends)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryPurple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primaryPurple.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.info_outline, color: AppColors.primaryPurple, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Showing offline demo allies (no mutual friends in database yet).',
+                            style: TextStyle(color: AppColors.primaryPurple, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (!_isLoading && !_isFriendsTab && !showDbFeed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryPurple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primaryPurple.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: const [
+                        Icon(Icons.info_outline, color: AppColors.primaryPurple, size: 16),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Showing offline demo players (no recommended users in database yet).',
+                            style: TextStyle(color: AppColors.primaryPurple, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
               // Allies list
               Expanded(
-                child: ListView(
-                  children: [
-                    if (onlineAllies.isNotEmpty) ...[
-                      _buildHeaderLabel('ONLINE — ${onlineAllies.length}', AppColors.statusOnline),
-                      ...onlineAllies.map((item) => _buildAllyCard(item)),
-                      const SizedBox(height: 20),
-                    ],
-                    if (offlineAllies.isNotEmpty) ...[
-                      _buildHeaderLabel('OFFLINE — ${offlineAllies.length}', Colors.white24),
-                      ...offlineAllies.map((item) => _buildAllyCard(item)),
-                    ],
-                  ],
-                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
+                    : ListView.builder(
+                        itemCount: activeList.length,
+                        itemBuilder: (context, index) {
+                          final item = activeList[index];
+                          return _buildAllyListItem(item);
+                        },
+                      ),
               ),
             ],
           ),
@@ -236,31 +363,42 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
     );
   }
 
-  Widget _buildHeaderLabel(String label, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.5,
-        ),
-      ),
-    );
-  }
+  Widget _buildAllyListItem(dynamic item) {
+    final bool isUserModel = item is UserModel;
+    
+    final String name = isUserModel
+        ? (item.fullName.isNotEmpty ? item.fullName : item.username)
+        : (item['name'] as String);
 
-  Widget _buildAllyCard(Map<String, dynamic> ally) {
-    final bool isOnline = ally['isOnline'];
+    final String username = isUserModel
+        ? item.username
+        : (item['name'] as String);
+
+    final String avatar = username.isNotEmpty ? username[0].toUpperCase() : 'A';
+    
+    final Color avatarColor = isUserModel
+        ? _getAvatarColor(item.uid)
+        : (item['avatarColor'] as Color? ?? Colors.purple);
+
+    final bool isOnline = isUserModel ? true : (item['isOnline'] as bool? ?? false);
+    
+    final List<String> badges = isUserModel
+        ? [item.role, item.playstyle].where((b) => b.isNotEmpty).toList()
+        : List<String>.from(item['badges'] ?? ['TACTICAL', 'SNIPER']);
+
+    if (badges.isEmpty) {
+      badges.addAll(['TACTICAL', 'SNIPER']);
+    }
 
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => ViewFriendScreen(allyData: ally),
+            builder: (_) => isUserModel
+                ? ViewFriendScreen(userModel: item)
+                : ViewFriendScreen(allyData: item),
           ),
-        );
+        ).then((_) => _loadData()); // Reload when coming back
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -281,13 +419,13 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                     height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: (ally['avatarColor'] as Color).withValues(alpha: 0.2),
+                      color: avatarColor.withValues(alpha: 0.2),
                     ),
                     child: Center(
                       child: Text(
-                        ally['avatar'] as String,
+                        avatar,
                         style: TextStyle(
-                          color: ally['avatarColor'] as Color,
+                          color: avatarColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -317,7 +455,7 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      ally['name'] as String,
+                      name,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -325,9 +463,10 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    
                     // Badges row
                     Row(
-                      children: (ally['badges'] as List<String>)
+                      children: badges
                           .map((badge) => Container(
                                 margin: const EdgeInsets.only(right: 6),
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -351,7 +490,7 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                 ),
               ),
 
-              // Action Msg button
+              // Action Msg button (Right Arrow or Msg)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
@@ -366,19 +505,21 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.chat_bubble_outline,
+                      _isFriendsTab ? Icons.chat_bubble_outline : Icons.arrow_forward_ios,
                       color: isOnline ? AppColors.statusOnline : Colors.white30,
                       size: 14,
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Msg',
-                      style: TextStyle(
-                        color: isOnline ? AppColors.statusOnline : Colors.white30,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                    if (_isFriendsTab) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        'Msg',
+                        style: TextStyle(
+                          color: isOnline ? AppColors.statusOnline : Colors.white30,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

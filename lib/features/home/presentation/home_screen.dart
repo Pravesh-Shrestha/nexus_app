@@ -7,6 +7,8 @@ import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/home/presentation/notifications_screen.dart';
 import 'package:nexus_app/features/friends/presentation/find_ally_screen.dart';
+import 'package:nexus_app/features/friends/data/friends_service.dart';
+import 'package:nexus_app/features/friends/presentation/view_friend_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,28 +18,57 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final AuthService _authService = AuthService();
+  final FriendsService _friendsService = FriendsService();
+  
   UserModel? _userModel;
+  List<UserModel> _friends = [];
+  List<UserModel> _recommended = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _loadHomeData();
   }
 
-  Future<void> _loadUserData() async {
+  Future<void> _loadHomeData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        final data = await AuthService().getUserData(user.uid);
+        final data = await _authService.getUserData(user.uid);
+        final friendsList = await _friendsService.getFriendsProfiles(user.uid);
+        final recommendedList = await _friendsService.getRecommendedPlayers(user.uid);
+        
         if (mounted) {
           setState(() {
             _userModel = data;
+            _friends = friendsList;
+            _recommended = recommendedList;
+            _isLoading = false;
           });
         }
       } catch (e) {
-        // Silent catch
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
+  }
+
+  String _getPlayerAvatarUrl(UserModel user) {
+    if (user.profileImageUrl.isNotEmpty && user.profileImageUrl.startsWith('http')) {
+      return user.profileImageUrl;
+    }
+    return 'https://api.dicebear.com/7.x/adventurer/png?seed=${user.username}';
   }
 
   Widget _buildAvatarImage(String imageUrl, String seed) {
@@ -80,230 +111,431 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 120), // Padding for bottom nav
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top App Bar
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24, vertical: AppSizes.p16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.gamepad, color: AppColors.primaryPurple),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Nexus',
-                          style: TextStyle(
-                            color: AppColors.primaryPurple,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const NotificationsScreen(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceHighlight,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.notifications_none, color: Colors.white, size: 20),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                          ),
-                          child: ClipOval(
-                            child: _buildAvatarImage(imageUrl, username),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              // Greeting Section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hello, $firstName',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Ready to RollOut !!',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Recommended Players
-              _buildSectionHeader(
-                'Recommended Players',
-                'View More',
-                onTapAction: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const FindAllyScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 100,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-                  children: [
-                    _buildPlayerAvatar('Zenith', 'https://i.pravatar.cc/150?img=11', true, AppColors.primaryCyan),
-                    _buildPlayerAvatar('Nova', 'https://i.pravatar.cc/150?img=12', true, AppColors.primaryPurple),
-                    _buildPlayerAvatar('Pixel', 'https://i.pravatar.cc/150?img=47', false, AppColors.primaryCyan),
-                    _buildPlayerAvatar('Rift', 'https://i.pravatar.cc/150?img=14', false, Colors.grey),
-                    _buildPlayerAvatar('Viper', 'https://i.pravatar.cc/150?img=15', false, Colors.grey),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Trending Communities
-              _buildSectionHeader('Trending Communities', 'Explore All'),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-                child: Column(
-                  children: [
-                    _buildCommunityCard(
-                      'Valorant Tactics',
-                      'Strategies, lineups, and...',
-                      '12.4k Active',
-                      'HOT',
-                      AppColors.primaryCyan,
-                      'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=200&auto=format&fit=crop',
-                    ),
-                    const SizedBox(height: 16),
-                    _buildCommunityCard(
-                      'Elite Setups',
-                      'Showcase your battle station',
-                      '8.1k Active',
-                      'GLOBAL',
-                      AppColors.primaryPurple,
-                      'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=200&auto=format&fit=crop',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Upcoming Events
-              _buildSectionHeader('Upcoming Events', 'View Calendar'),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-                child: Container(
-                  height: 180,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AppSizes.r24),
-                    image: const DecorationImage(
-                      image: NetworkImage('https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppSizes.r24),
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          AppColors.secondaryPurple.withValues(alpha: 0.9),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(AppSizes.p20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Row(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
+            : RefreshIndicator(
+                color: AppColors.primaryPurple,
+                onRefresh: _loadHomeData,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 120), // Padding for bottom nav
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top App Bar
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24, vertical: AppSizes.p16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryPurple.withValues(alpha: 0.8),
-                                borderRadius: BorderRadius.circular(AppSizes.r16),
-                              ),
-                              child: const Text(
-                                'LIVE IN 2H',
-                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                            Row(
+                              children: [
+                                const Icon(Icons.gamepad, color: AppColors.primaryPurple),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Nexus',
+                                  style: TextStyle(
+                                    color: AppColors.primaryPurple,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const NotificationsScreen(),
+                                      ),
+                                    ).then((_) => _loadHomeData());
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surfaceHighlight,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.notifications_none, color: Colors.white, size: 20),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: ClipOval(
+                                    child: _buildAvatarImage(imageUrl, username),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Greeting Section
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Hello, $firstName',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceHighlight.withValues(alpha: 0.8),
-                                borderRadius: BorderRadius.circular(AppSizes.r16),
-                                border: Border.all(color: Colors.white24),
-                              ),
-                              child: const Text(
-                                'Valorant Champions',
-                                style: TextStyle(color: Colors.white, fontSize: 10),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Ready to RollOut !!',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 14,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Grand Finals',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Friends Section
+                      if (_friends.isNotEmpty) ...[
+                        _buildSectionHeader(
+                          'Friends',
+                          'Find Allies',
+                          onTapAction: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const FindAllyScreen(),
+                              ),
+                            ).then((_) => _loadHomeData());
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: 100,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                            itemCount: _friends.length,
+                            itemBuilder: (context, index) {
+                              final friend = _friends[index];
+                              final name = friend.fullName.isNotEmpty ? friend.fullName.split(' ')[0] : friend.username;
+                              final avatarUrl = _getPlayerAvatarUrl(friend);
+                              return _buildPlayerAvatar(
+                                name,
+                                avatarUrl,
+                                true,
+                                AppColors.primaryCyan,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ViewFriendScreen(userModel: friend),
+                                    ),
+                                  ).then((_) => _loadHomeData());
+                                },
+                              );
+                            },
                           ),
                         ),
+                        const SizedBox(height: 24),
+                      ] else ...[
+                        // Mock Friends Fallback
+                        _buildSectionHeader(
+                          'Friends (Demo)',
+                          'Find Allies',
+                          onTapAction: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const FindAllyScreen(),
+                              ),
+                            ).then((_) => _loadHomeData());
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: 100,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                            children: [
+                              _buildPlayerAvatar(
+                                'Persona 1',
+                                'https://i.pravatar.cc/150?img=11',
+                                true,
+                                AppColors.primaryCyan,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const ViewFriendScreen(
+                                        allyData: {
+                                          'name': 'Persona 1',
+                                          'avatar': 'Z',
+                                          'avatarColor': Colors.green,
+                                          'isOnline': true,
+                                          'badges': ['TACTICAL', 'SNIPER'],
+                                          'bio': 'Tactical IGL · always down to queue',
+                                          'rank': 'Immortal 2',
+                                          'game': 'Valorant',
+                                          'friendsCount': '1.2k',
+                                          'communitiesCount': '42',
+                                          'gameBadges': ['TACTICAL', 'SNIPER', 'Methodical', 'Shotcaller'],
+                                        },
+                                      ),
+                                    ),
+                                  ).then((_) => _loadHomeData());
+                                },
+                              ),
+                              _buildPlayerAvatar(
+                                'Nova',
+                                'https://i.pravatar.cc/150?img=12',
+                                true,
+                                AppColors.primaryPurple,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const ViewFriendScreen(
+                                        allyData: {
+                                          'name': 'Nova_Strike',
+                                          'avatar': 'N',
+                                          'avatarColor': Colors.purple,
+                                          'isOnline': true,
+                                          'badges': ['SUPPORT', 'CASUAL'],
+                                          'bio': 'Support player looking for competitive team play',
+                                          'rank': 'Diamond 1',
+                                          'game': 'Apex Legends',
+                                          'friendsCount': '482',
+                                          'communitiesCount': '15',
+                                          'gameBadges': ['SUPPORT', 'CASUAL', 'Team-player'],
+                                        },
+                                      ),
+                                    ),
+                                  ).then((_) => _loadHomeData());
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
                       ],
-                    ),
+
+                      // Recommended Players Section
+                      _buildSectionHeader(
+                        'Recommended Players',
+                        'View More',
+                        onTapAction: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const FindAllyScreen(),
+                            ),
+                          ).then((_) => _loadHomeData());
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 100,
+                        child: _recommended.isNotEmpty
+                            ? ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                                itemCount: _recommended.length,
+                                itemBuilder: (context, index) {
+                                  final player = _recommended[index];
+                                  final name = player.fullName.isNotEmpty ? player.fullName.split(' ')[0] : player.username;
+                                  final avatarUrl = _getPlayerAvatarUrl(player);
+                                  return _buildPlayerAvatar(
+                                    name,
+                                    avatarUrl,
+                                    false,
+                                    Colors.grey,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => ViewFriendScreen(userModel: player),
+                                        ),
+                                      ).then((_) => _loadHomeData());
+                                    },
+                                  );
+                                },
+                              )
+                            : ListView(
+                                scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                                children: [
+                                  _buildPlayerAvatar(
+                                    'Pixel',
+                                    'https://i.pravatar.cc/150?img=47',
+                                    false,
+                                    AppColors.primaryCyan,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const ViewFriendScreen(
+                                            allyData: {
+                                              'name': 'Pixel_Queen',
+                                              'avatar': 'P',
+                                              'avatarColor': Colors.pink,
+                                              'isOnline': false,
+                                              'badges': ['CREATIVE', 'CASUAL'],
+                                              'bio': 'Cozy gamer, mostly playing for fun and chill sessions',
+                                              'rank': 'Silver 2',
+                                              'game': 'Minecraft',
+                                              'friendsCount': '850',
+                                              'communitiesCount': '24',
+                                              'gameBadges': ['CREATIVE', 'CASUAL', 'Builder'],
+                                            },
+                                          ),
+                                        ),
+                                      ).then((_) => _loadHomeData());
+                                    },
+                                  ),
+                                  _buildPlayerAvatar(
+                                    'Rift',
+                                    'https://i.pravatar.cc/150?img=14',
+                                    false,
+                                    Colors.grey,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const ViewFriendScreen(
+                                            allyData: {
+                                              'name': 'Rift_Walker',
+                                              'avatar': 'R',
+                                              'avatarColor': Colors.teal,
+                                              'isOnline': false,
+                                              'badges': ['ENTRY', 'COMPETITIVE'],
+                                              'bio': 'Entry fragger looking for an active squad',
+                                              'rank': 'Gold 3',
+                                              'game': 'Valorant',
+                                              'friendsCount': '210',
+                                              'communitiesCount': '8',
+                                              'gameBadges': ['ENTRY', 'COMPETITIVE', 'Aggressive'],
+                                            },
+                                          ),
+                                        ),
+                                      ).then((_) => _loadHomeData());
+                                    },
+                                  ),
+                                ],
+                              ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Trending Communities
+                      _buildSectionHeader('Trending Communities', 'Explore All'),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                        child: Column(
+                          children: [
+                            _buildCommunityCard(
+                              'Valorant Tactics',
+                              'Strategies, lineups, and...',
+                              '12.4k Active',
+                              'HOT',
+                              AppColors.primaryCyan,
+                              'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=200&auto=format&fit=crop',
+                            ),
+                            const SizedBox(height: 16),
+                            _buildCommunityCard(
+                              'Elite Setups',
+                              'Showcase your battle station',
+                              '8.1k Active',
+                              'GLOBAL',
+                              AppColors.primaryPurple,
+                              'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=200&auto=format&fit=crop',
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Upcoming Events
+                      _buildSectionHeader('Upcoming Events', 'View Calendar'),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                        child: Container(
+                          height: 180,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(AppSizes.r24),
+                            image: const DecorationImage(
+                              image: NetworkImage('https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop'),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(AppSizes.r24),
+                              gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: [
+                                  AppColors.secondaryPurple.withValues(alpha: 0.9),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
+                            padding: const EdgeInsets.all(AppSizes.p20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primaryPurple.withValues(alpha: 0.8),
+                                        borderRadius: BorderRadius.circular(AppSizes.r16),
+                                      ),
+                                      child: const Text(
+                                        'LIVE IN 2H',
+                                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceHighlight.withValues(alpha: 0.8),
+                                        borderRadius: BorderRadius.circular(AppSizes.r16),
+                                        border: Border.all(color: Colors.white24),
+                                      ),
+                                      child: const Text(
+                                        'Valorant Champions',
+                                        style: TextStyle(color: Colors.white, fontSize: 10),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Grand Finals',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -339,57 +571,60 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildPlayerAvatar(String name, String imageUrl, bool isOnline, Color glowColor) {
+  Widget _buildPlayerAvatar(String name, String imageUrl, bool isOnline, Color glowColor, {VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.only(right: AppSizes.p20),
-      child: Column(
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: glowColor, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: glowColor.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                  image: DecorationImage(
-                    image: NetworkImage(imageUrl),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-              if (isOnline)
-                Positioned(
-                  bottom: 0,
-                  right: 4,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00FF00), // Online green
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.background, width: 2),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: glowColor, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: glowColor.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                    image: DecorationImage(
+                      image: NetworkImage(imageUrl),
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            name,
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 12,
+                if (isOnline)
+                  Positioned(
+                    bottom: 0,
+                    right: 4,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00FF00), // Online green
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.background, width: 2),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              name,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
