@@ -12,6 +12,13 @@ class AppColors {
   static const Color primaryPurple = Color(0xFF8A2BE2);
   static const Color secondaryPurple = Color(0xFF4B39EF);
   
+  // Status & Actions
+  static const Color statusOnline = Color(0xFF00E479);
+  static const Color successGreen = Color(0xFF00FF87);
+  static const Color errorRed = Color(0xFFFF3B30);
+  static const Color logoutBorder = Color(0xFFD92D20);
+  static const Color logoutText = Color(0xFFF04438);
+  
   // Gradients
   static const LinearGradient authButtonGradient = LinearGradient(
     colors: [Color(0xFF00C6FF), Color(0xFF0072FF), Color(0xFF8A2BE2)],

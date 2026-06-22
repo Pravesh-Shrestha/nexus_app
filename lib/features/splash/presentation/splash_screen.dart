@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/welcome/presentation/welcome_screen.dart';
+import 'package:nexus_app/features/home/presentation/main_layout.dart';
+import 'package:nexus_app/features/auth/data/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,12 +15,23 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Simulate loading/initialization time
+    // Check auth status after the animation delay
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
-        );
+        final authService = AuthService();
+        final user = authService.currentUser;
+        
+        if (user != null) {
+          // User is already logged in
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainLayout()),
+          );
+        } else {
+          // No user logged in
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          );
+        }
       }
     });
   }

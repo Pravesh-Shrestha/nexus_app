@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/home/presentation/home_screen.dart';
+import 'package:nexus_app/features/profile/presentation/profile_screen.dart';
 import 'package:animated_notch_bottom_bar/animated_notch_bottom_bar/animated_notch_bottom_bar.dart';
 
 class MainLayout extends StatefulWidget {
@@ -27,7 +28,7 @@ class _MainLayoutState extends State<MainLayout> {
     const HomeScreen(),
     const Center(child: Text('Explore Screen', style: TextStyle(color: Colors.white))),
     const Center(child: Text('Messages Screen', style: TextStyle(color: Colors.white))),
-    const Center(child: Text('Profile Screen', style: TextStyle(color: Colors.white))),
+    const ProfileScreen(),
   ];
 
   @override
