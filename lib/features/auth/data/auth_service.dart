@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
+import 'package:nexus_app/features/auth/data/user_settings_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -106,6 +107,31 @@ class AuthService {
       return null;
     } catch (e) {
       throw 'Failed to load profile. Please try again.';
+    }
+  }
+
+  // Get User Settings from the separate 'settings' collection
+  Future<UserSettingsModel> getUserSettings(String uid) async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('settings').doc(uid).get();
+      if (doc.exists && doc.data() != null) {
+        return UserSettingsModel.fromJson(doc.data()!);
+      }
+      return UserSettingsModel(uid: uid); // Default settings
+    } catch (e) {
+      return UserSettingsModel(uid: uid);
+    }
+  }
+
+  // Update User Settings in collection 'settings'
+  Future<void> updateUserSettings(UserSettingsModel settings) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('settings')
+          .doc(settings.uid)
+          .set(settings.toJson(), SetOptions(merge: true));
+    } catch (e) {
+      throw 'Failed to update user settings. Please try again.';
     }
   }
 

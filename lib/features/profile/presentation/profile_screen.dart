@@ -7,6 +7,7 @@ import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
+import 'package:nexus_app/features/auth/data/user_settings_model.dart';
 import 'package:nexus_app/features/auth/presentation/login_screen.dart';
 import 'package:nexus_app/features/profile/presentation/advanced_settings_screen.dart';
 import 'package:nexus_app/features/profile/presentation/edit_profile_screen.dart';
@@ -23,6 +24,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _userModel;
+  UserSettingsModel? _userSettings;
   bool _isLoading = true;
 
   @override
@@ -36,9 +38,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user != null) {
       try {
         final data = await AuthService().getUserData(user.uid);
+        final settings = await AuthService().getUserSettings(user.uid);
         if (mounted) {
           setState(() {
             _userModel = data;
+            _userSettings = settings;
             _isLoading = false;
           });
         }
@@ -420,8 +424,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const Divider(color: Colors.white10, height: 1),
                       _buildSettingsTile(
                         Icons.notifications_none,
-                        'Notification Settings',
+                        'Notifications',
                         Colors.greenAccent,
+                        trailing: Switch(
+                          value: _userSettings?.notificationsEnabled ?? true,
+                          activeThumbColor: AppColors.primaryCyan,
+                          activeTrackColor: AppColors.primaryPurple.withValues(alpha: 0.5),
+                          inactiveThumbColor: Colors.white60,
+                          inactiveTrackColor: Colors.white10,
+                          onChanged: (value) async {
+                            if (_userSettings == null) return;
+                            final updatedSettings = _userSettings!.copyWith(notificationsEnabled: value);
+                            setState(() {
+                              _userSettings = updatedSettings;
+                            });
+                            try {
+                              await AuthService().updateUserSettings(updatedSettings);
+                            } catch (e) {
+                              debugPrint('Error updating user settings: $e');
+                            }
+                          },
+                        ),
                       ),
                       const Divider(color: Colors.white10, height: 1),
                       _buildSettingsTile(
@@ -621,6 +644,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String title,
     Color iconColor, {
     VoidCallback? onTap,
+    Widget? trailing,
   }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -640,7 +664,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           fontWeight: FontWeight.w500,
         ),
       ),
-      trailing: const Icon(
+      trailing: trailing ?? const Icon(
         Icons.chevron_right,
         color: Colors.white30,
         size: 20,
