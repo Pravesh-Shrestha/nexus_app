@@ -15,6 +15,11 @@ class UserModel {
   // Image URL from Cloudinary (for future)
   final String profileImageUrl;
 
+  // New Fields
+  final String bio;
+  final String phoneNumber;
+  final String location;
+
   UserModel({
     required this.uid,
     required this.email,
@@ -27,6 +32,9 @@ class UserModel {
     this.playstyle = '',
     this.skillLevel = '',
     this.profileImageUrl = '',
+    this.bio = '',
+    this.phoneNumber = '',
+    this.location = '',
   });
 
   // Convert to Map for Firestore
@@ -43,6 +51,9 @@ class UserModel {
       'playstyle': playstyle,
       'skillLevel': skillLevel,
       'profileImageUrl': profileImageUrl,
+      'bio': bio,
+      'phoneNumber': phoneNumber,
+      'location': location,
       'createdAt': DateTime.now().toIso8601String(),
     };
   }
@@ -61,6 +72,9 @@ class UserModel {
       playstyle: json['playstyle'] ?? '',
       skillLevel: json['skillLevel'] ?? '',
       profileImageUrl: json['profileImageUrl'] ?? '',
+      bio: json['bio'] ?? '',
+      phoneNumber: json['phoneNumber'] ?? '',
+      location: json['location'] ?? '',
     );
   }
 
@@ -77,6 +91,9 @@ class UserModel {
     String? playstyle,
     String? skillLevel,
     String? profileImageUrl,
+    String? bio,
+    String? phoneNumber,
+    String? location,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -90,6 +107,9 @@ class UserModel {
       playstyle: playstyle ?? this.playstyle,
       skillLevel: skillLevel ?? this.skillLevel,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      bio: bio ?? this.bio,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      location: location ?? this.location,
     );
   }
 }

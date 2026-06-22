@@ -6,6 +6,7 @@ import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
 import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/features/profile/presentation/terms_privacy_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -291,9 +292,30 @@ class _SignupScreenState extends State<SignupScreen> {
                     const SizedBox(height: 8),
                     
                     // Terms
-                    const Text(
-                      'I agree to the Terms and Privacy Policy',
-                      style: TextStyle(color: Colors.white30, fontSize: 10),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const TermsPrivacyScreen(),
+                          ),
+                        );
+                      },
+                      child: RichText(
+                        text: const TextSpan(
+                          text: 'I agree to the ',
+                          style: TextStyle(color: Colors.white30, fontSize: 10),
+                          children: [
+                            TextSpan(
+                              text: 'Terms and Privacy Policy',
+                              style: TextStyle(
+                                color: AppColors.primaryPurple,
+                                fontWeight: FontWeight.bold,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     
                     const SizedBox(height: 24),

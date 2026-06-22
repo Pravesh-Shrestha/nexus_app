@@ -8,6 +8,7 @@ import 'package:nexus_app/features/auth/presentation/login_screen.dart';
 import 'package:nexus_app/features/profile/presentation/advanced_settings_screen.dart';
 import 'package:nexus_app/features/profile/presentation/edit_profile_screen.dart';
 import 'package:nexus_app/features/profile/presentation/change_password_screen.dart';
+import 'package:nexus_app/features/profile/presentation/terms_privacy_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -73,9 +74,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final String role = model?.role.isNotEmpty == true ? model!.role : 'Streamer';
     final String playstyle = model?.playstyle.isNotEmpty == true ? model!.playstyle : 'Crazy';
     final List<String> favoriteGames = model?.favoriteGames ?? ['Valorant', 'FreeFire'];
-    final String bio = model != null
-        ? '$role • $playstyle Gamer\nPlays: ${favoriteGames.isNotEmpty ? favoriteGames.join(", ") : "No games selected"}'
-        : 'Tactical specialist. 24/7 competitive grind.\nSquad leader of [NEON_RAIDERS].';
+    final String bio = model?.bio.isNotEmpty == true
+        ? model!.bio
+        : (model != null
+            ? '$role • $playstyle Gamer\nPlays: ${favoriteGames.isNotEmpty ? favoriteGames.join(", ") : "No games selected"}'
+            : 'Tactical specialist. 24/7 competitive grind.\nSquad leader of [NEON_RAIDERS].');
 
     final String imageUrl = model?.profileImageUrl.isNotEmpty == true
         ? model!.profileImageUrl
@@ -325,6 +328,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Icons.shield_outlined,
                         'Privacy & Safety',
                         Colors.white70,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const TermsPrivacyScreen(),
+                            ),
+                          );
+                        },
                       ),
                       const Divider(color: Colors.white10, height: 1),
                       _buildSettingsTile(

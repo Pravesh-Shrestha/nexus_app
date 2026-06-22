@@ -7,6 +7,10 @@ class CustomTextField extends StatefulWidget {
   final String hintText;
   final IconData prefixIcon;
   final bool isPassword;
+  final int maxLines;
+  final TextInputType keyboardType;
+  final VoidCallback? onTap;
+  final bool readOnly;
 
   const CustomTextField({
     super.key,
@@ -14,6 +18,10 @@ class CustomTextField extends StatefulWidget {
     required this.hintText,
     required this.prefixIcon,
     this.isPassword = false,
+    this.maxLines = 1,
+    this.keyboardType = TextInputType.text,
+    this.onTap,
+    this.readOnly = false,
   });
 
   @override
@@ -34,6 +42,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
       child: TextField(
         controller: widget.controller,
         obscureText: widget.isPassword ? _obscureText : false,
+        maxLines: widget.isPassword ? 1 : widget.maxLines,
+        keyboardType: widget.keyboardType,
+        onTap: widget.onTap,
+        readOnly: widget.readOnly,
         style: const TextStyle(color: AppColors.textPrimary),
         decoration: InputDecoration(
           hintText: widget.hintText,
@@ -54,9 +66,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
         ),
       ),
     );
   }
 }
+

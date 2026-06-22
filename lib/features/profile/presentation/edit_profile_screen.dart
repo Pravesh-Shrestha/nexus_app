@@ -17,6 +17,11 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
+  final _dobController = TextEditingController();
+  final _bioController = TextEditingController();
+  final _phoneNumberController = TextEditingController();
+  final _locationController = TextEditingController();
+  String? _selectedGender;
   
   String _selectedRole = 'Streamer';
   String _selectedPlaystyle = 'Crazy';
@@ -42,9 +47,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _currentUserModel = model;
           _fullNameController.text = model.fullName;
           _usernameController.text = model.username;
+          _dobController.text = model.dob;
+          _selectedGender = model.gender.isNotEmpty ? model.gender : null;
+          _bioController.text = model.bio;
+          _phoneNumberController.text = model.phoneNumber;
+          _locationController.text = model.location;
           _selectedRole = model.role.isNotEmpty ? model.role : 'Streamer';
           _selectedPlaystyle = model.playstyle.isNotEmpty ? model.playstyle : 'Crazy';
           _selectedSkillLevel = model.skillLevel.isNotEmpty ? model.skillLevel : 'Pro';
+          _selectedGames.clear();
           _selectedGames.addAll(model.favoriteGames);
           _isLoading = false;
         });
@@ -60,7 +71,260 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _fullNameController.dispose();
     _usernameController.dispose();
+    _dobController.dispose();
+    _bioController.dispose();
+    _phoneNumberController.dispose();
+    _locationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(const Duration(days: 365 * 18)),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: AppColors.primaryPurple,
+              onPrimary: Colors.white,
+              surface: AppColors.surfaceHighlight,
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      final formattedDate = "${picked.year}/${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}";
+      setState(() {
+        _dobController.text = formattedDate;
+      });
+    }
+  }
+
+  void _showGamingPreferencesBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            Widget buildSectionTitle(String title) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 8),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              );
+            }
+
+            Widget buildChip({
+              required String label,
+              required bool isSelected,
+              required VoidCallback onTap,
+            }) {
+              return GestureDetector(
+                onTap: onTap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white : const Color(0xFF16171D),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.white10,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSelected ? Icons.check : Icons.add,
+                        color: isSelected ? const Color(0xFF00E5FF) : Colors.white54,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: isSelected ? const Color(0xFF0B0C10) : Colors.white70,
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceHighlight,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+                border: Border(
+                  top: BorderSide(color: Colors.white12, width: 1),
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24, vertical: AppSizes.p16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Gaming Preferences',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white70),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white10),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          buildSectionTitle('WHO ARE YOU?'),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['Gamer', 'Streamer', 'Creator', 'Others'].map((role) {
+                              return buildChip(
+                                label: role,
+                                isSelected: _selectedRole == role,
+                                onTap: () {
+                                  setModalState(() {
+                                    _selectedRole = role;
+                                  });
+                                  setState(() {});
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          buildSectionTitle('FAVORITE GAMES'),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['FreeFire', 'Valorant', 'PUBG', 'Others'].map((game) {
+                              final isSelected = _selectedGames.contains(game);
+                              return buildChip(
+                                label: game,
+                                isSelected: isSelected,
+                                onTap: () {
+                                  setModalState(() {
+                                    if (isSelected) {
+                                      _selectedGames.remove(game);
+                                    } else {
+                                      _selectedGames.add(game);
+                                    }
+                                  });
+                                  setState(() {});
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          buildSectionTitle('PLAYSTYLE'),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['Casual', 'Crazy', 'Hardcore', 'Others'].map((style) {
+                              return buildChip(
+                                label: style,
+                                isSelected: _selectedPlaystyle == style,
+                                onTap: () {
+                                  setModalState(() {
+                                    _selectedPlaystyle = style;
+                                  });
+                                  setState(() {});
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          buildSectionTitle('SKILL LEVEL'),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ['Noob', 'Soso', 'Pro', 'E-Player'].map((level) {
+                              return buildChip(
+                                label: level,
+                                isSelected: _selectedSkillLevel == level,
+                                onTap: () {
+                                  setModalState(() {
+                                    _selectedSkillLevel = level;
+                                  });
+                                  setState(() {});
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      width: double.infinity,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'DONE',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _saveProfile() async {
@@ -71,6 +335,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final updatedModel = _currentUserModel!.copyWith(
       fullName: _fullNameController.text.trim(),
       username: _usernameController.text.trim(),
+      dob: _dobController.text.trim(),
+      gender: _selectedGender ?? '',
+      bio: _bioController.text.trim(),
+      phoneNumber: _phoneNumberController.text.trim(),
+      location: _locationController.text.trim(),
       role: _selectedRole,
       playstyle: _selectedPlaystyle,
       skillLevel: _selectedSkillLevel,
@@ -104,69 +373,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 12),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : const Color(0xFF16171D),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? Colors.white : Colors.white10,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  )
-                ]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? Icons.check : Icons.add,
-              color: isSelected ? const Color(0xFF00E5FF) : Colors.white54,
-              size: 16,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? const Color(0xFF0B0C10) : Colors.white70,
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -195,7 +401,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Basic Info
                     CustomTextField(
                       controller: _fullNameController,
                       hintText: 'Full name',
@@ -206,76 +411,122 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       hintText: 'Username',
                       prefixIcon: Icons.alternate_email,
                     ),
-                    
-                    const SizedBox(height: 16),
-                    const Divider(color: Colors.white10),
-                    
-                    // WHO ARE YOU?
-                    _buildSectionTitle('WHO ARE YOU?'),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: ['Gamer', 'Streamer', 'Creator', 'Others'].map((role) {
-                        return _buildChip(
-                          label: role,
-                          isSelected: _selectedRole == role,
-                          onTap: () => setState(() => _selectedRole = role),
-                        );
-                      }).toList(),
+                    CustomTextField(
+                      controller: _dobController,
+                      hintText: 'Date of Birth (YYYY/MM/DD)',
+                      prefixIcon: Icons.calendar_today_outlined,
+                      readOnly: true,
+                      onTap: () => _selectDate(context),
                     ),
-                    
-                    // FAVORITE GAMES
-                    _buildSectionTitle('FAVORITE GAMES'),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: ['FreeFire', 'Valorant', 'PUBG', 'Others'].map((game) {
-                        final isSelected = _selectedGames.contains(game);
-                        return _buildChip(
-                          label: game,
-                          isSelected: isSelected,
-                          onTap: () {
+                    Container(
+                      margin: const EdgeInsets.only(bottom: AppSizes.p16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppSizes.r16),
+                      ),
+                      height: 56,
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedGender,
+                          hint: const Row(
+                            children: [
+                              Icon(Icons.wc_outlined, color: AppColors.textMuted, size: 20),
+                              SizedBox(width: 12),
+                              Text('Gender', style: TextStyle(color: AppColors.textMuted, fontSize: 14)),
+                            ],
+                          ),
+                          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textMuted),
+                          dropdownColor: AppColors.surfaceHighlight,
+                          isExpanded: true,
+                          style: const TextStyle(color: Colors.white),
+                          items: ['Male', 'Female', 'Other', 'Prefer not to say']
+                              .map((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.wc_outlined, color: AppColors.textMuted, size: 20),
+                                  const SizedBox(width: 12),
+                                  Text(value),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
                             setState(() {
-                              if (isSelected) {
-                                _selectedGames.remove(game);
-                              } else {
-                                _selectedGames.add(game);
-                              }
+                              _selectedGender = newValue;
                             });
                           },
-                        );
-                      }).toList(),
+                        ),
+                      ),
+                    ),
+                    CustomTextField(
+                      controller: _bioController,
+                      hintText: 'Bio',
+                      prefixIcon: Icons.edit_note_outlined,
+                      maxLines: 3,
+                      keyboardType: TextInputType.multiline,
+                    ),
+                    CustomTextField(
+                      controller: _phoneNumberController,
+                      hintText: 'Phone Number',
+                      prefixIcon: Icons.phone_outlined,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    CustomTextField(
+                      controller: _locationController,
+                      hintText: 'Location (e.g. Kathmandu, Nepal)',
+                      prefixIcon: Icons.location_on_outlined,
+                    ),
+                    const SizedBox(height: 8),
+                    const Divider(color: Colors.white10),
+                    const SizedBox(height: 16),
+                    
+                    GestureDetector(
+                      onTap: _showGamingPreferencesBottomSheet,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: AppSizes.p16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppSizes.r16),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.sports_esports_outlined, color: Colors.white70),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Gaming Preferences',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$_selectedRole • $_selectedPlaystyle • $_selectedSkillLevel',
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right, color: Colors.white30),
+                          ],
+                        ),
+                      ),
                     ),
                     
-                    // PLAYSTYLE
-                    _buildSectionTitle('PLAYSTYLE'),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: ['Casual', 'Crazy', 'Hardcore', 'Others'].map((style) {
-                        return _buildChip(
-                          label: style,
-                          isSelected: _selectedPlaystyle == style,
-                          onTap: () => setState(() => _selectedPlaystyle = style),
-                        );
-                      }).toList(),
-                    ),
-                    
-                    // SKILL LEVEL
-                    _buildSectionTitle('SKILL LEVEL'),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: ['Noob', 'Soso', 'Pro', 'E-Player'].map((level) {
-                        return _buildChip(
-                          label: level,
-                          isSelected: _selectedSkillLevel == level,
-                          onTap: () => setState(() => _selectedSkillLevel = level),
-                        );
-                      }).toList(),
-                    ),
-                    
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 32),
                     GradientButton(
                       text: 'SAVE PROFILE',
                       onTap: _saveProfile,
