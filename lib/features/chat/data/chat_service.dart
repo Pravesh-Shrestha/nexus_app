@@ -97,20 +97,17 @@ class ChatService {
         updateData['unreadCounts.$otherUserId'] = FieldValue.increment(1);
       }
 
-      await _firestore.collection('chats').doc(chatId).set(updateData, SetOptions(merge: true));
+      await _firestore.collection('chats').doc(chatId).update(updateData);
     } catch (e) {
       throw 'Failed to send message: $e';
     }
   }
 
-  // Reset unread count for current user
   Future<void> markChatAsRead(String chatId, String currentUserId) async {
     try {
-      await _firestore.collection('chats').doc(chatId).set({
-        'unreadCounts': {
-          currentUserId: 0,
-        }
-      }, SetOptions(merge: true));
+      await _firestore.collection('chats').doc(chatId).update({
+        'unreadCounts.$currentUserId': 0,
+      });
     } catch (_) {}
   }
 
@@ -136,6 +133,15 @@ class ChatService {
             if (userDoc.exists && userDoc.data() != null) {
               final recipient = UserModel.fromJson(userDoc.data()!);
               final unreadCounts = Map<String, dynamic>.from(data['unreadCounts'] ?? {});
+              
+              // Also merge any flat keys (e.g. unreadCounts.UID) that might exist
+              data.forEach((key, value) {
+                if (key.startsWith('unreadCounts.')) {
+                  final uid = key.replaceFirst('unreadCounts.', '');
+                  unreadCounts[uid] = value;
+                }
+              });
+
               final unreadCount = unreadCounts[currentUserId] as int? ?? 0;
 
               rooms.add(ChatRoom(

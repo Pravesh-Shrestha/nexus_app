@@ -50,7 +50,14 @@ class _ChatScreenState extends State<ChatScreen> {
         final data = snapshot.data();
         if (data != null) {
           setState(() {
-            _unreadCounts = Map<String, dynamic>.from(data['unreadCounts'] ?? {});
+            final map = Map<String, dynamic>.from(data['unreadCounts'] ?? {});
+            data.forEach((key, value) {
+              if (key.startsWith('unreadCounts.')) {
+                final uid = key.replaceFirst('unreadCounts.', '');
+                map[uid] = value;
+              }
+            });
+            _unreadCounts = map;
           });
         }
       }
@@ -135,7 +142,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Set<String> _calculateReadMessageIds(List<MessageModel> messages) {
     final Set<String> readIds = {};
-    final recipientUnreadCount = _unreadCounts[widget.recipient.uid] as int? ?? 0;
+    final recipientVal = _unreadCounts[widget.recipient.uid];
+    final recipientUnreadCount = recipientVal is num ? recipientVal.toInt() : 0;
     
     int mySentCount = 0;
     for (var message in messages) {
