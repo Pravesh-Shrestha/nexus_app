@@ -127,59 +127,68 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _buildImageBubble(BuildContext context, String imageUrl, bool isMe) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.of(context).size.width * 0.7,
-        maxHeight: MediaQuery.of(context).size.width * 0.7,
-      ),
-      decoration: BoxDecoration(
-        color: isMe ? AppColors.surface : const Color(0xFF1B1C22),
-        borderRadius: BorderRadius.circular(16),
-        border: isMe
-            ? Border.all(
-                color: const Color(0xFF4B39EF),
-                width: 1.2,
-              )
-            : null,
-      ),
-      padding: const EdgeInsets.all(4),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              height: 150,
-              width: 150,
-              color: Colors.black26,
-              child: const Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primaryCyan,
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => FullScreenImageScreen(imageUrl: imageUrl),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.78,
+          maxHeight: MediaQuery.of(context).size.width * 0.78,
+        ),
+        decoration: BoxDecoration(
+          color: isMe ? AppColors.surface : const Color(0xFF1B1C22),
+          borderRadius: BorderRadius.circular(16),
+          border: isMe
+              ? Border.all(
+                  color: const Color(0xFF4B39EF),
+                  width: 1.2,
+                )
+              : null,
+        ),
+        padding: const EdgeInsets.all(4),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                height: 150,
+                width: 150,
+                color: Colors.black26,
+                child: const Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primaryCyan,
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              padding: const EdgeInsets.all(12),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.error_outline, color: AppColors.errorRed),
-                  SizedBox(width: 8),
-                  Text('Failed to load image', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                ],
-              ),
-            );
-          },
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                padding: const EdgeInsets.all(12),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline, color: AppColors.errorRed),
+                    SizedBox(width: 8),
+                    Text('Failed to load image', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -256,6 +265,41 @@ class ChatBubble extends StatelessWidget {
                     _formatMessageTime(message.timestamp),
                     style: const TextStyle(color: Colors.white24, fontSize: 10),
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class FullScreenImageScreen extends StatelessWidget {
+  final String imageUrl;
+
+  const FullScreenImageScreen({super.key, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 16,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 24),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
           ),
         ],
       ),

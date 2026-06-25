@@ -61,13 +61,25 @@ class _ChatInputFieldState extends State<ChatInputField> {
               ),
               const SizedBox(height: 20),
               ListTile(
-                leading: const Icon(Icons.photo_library_rounded, color: AppColors.primaryCyan),
-                title: const Text('Gallery', style: TextStyle(color: Colors.white)),
+                leading: const Icon(
+                  Icons.photo_library_rounded,
+                  color: AppColors.primaryCyan,
+                ),
+                title: const Text(
+                  'Gallery',
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () => Navigator.of(context).pop(ImageSource.gallery),
               ),
               ListTile(
-                leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primaryCyan),
-                title: const Text('Camera', style: TextStyle(color: Colors.white)),
+                leading: const Icon(
+                  Icons.camera_alt_rounded,
+                  color: AppColors.primaryCyan,
+                ),
+                title: const Text(
+                  'Camera',
+                  style: TextStyle(color: Colors.white),
+                ),
                 onTap: () => Navigator.of(context).pop(ImageSource.camera),
               ),
             ],
@@ -90,8 +102,10 @@ class _ChatInputFieldState extends State<ChatInputField> {
       if (pickedFile != null) {
         widget.onUploadStateChanged(true);
 
-        final cloudinaryUrl = await CloudinaryService().uploadImage(File(pickedFile.path));
-        
+        final cloudinaryUrl = await CloudinaryService().uploadImage(
+          File(pickedFile.path),
+        );
+
         if (cloudinaryUrl != null) {
           widget.onImageSent(cloudinaryUrl);
         }
@@ -119,12 +133,18 @@ class _ChatInputFieldState extends State<ChatInputField> {
         onEmojiSelected: (emoji) {
           final text = _controller.text;
           final selection = _controller.selection;
-          
+
           if (selection.isValid) {
-            final newText = text.replaceRange(selection.start, selection.end, emoji);
+            final newText = text.replaceRange(
+              selection.start,
+              selection.end,
+              emoji,
+            );
             _controller.value = _controller.value.copyWith(
               text: newText,
-              selection: TextSelection.collapsed(offset: selection.start + emoji.length),
+              selection: TextSelection.collapsed(
+                offset: selection.start + emoji.length,
+              ),
             );
           } else {
             _controller.text = text + emoji;
@@ -148,21 +168,22 @@ class _ChatInputFieldState extends State<ChatInputField> {
         ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Camera button replacing paperclip with 40x40 bounds
           IconButton(
-            icon: const Icon(Icons.camera_alt_rounded, color: Colors.white54, size: 22),
+            icon: const Icon(
+              Icons.camera_alt_rounded,
+              color: Colors.white54,
+              size: 22,
+            ),
             onPressed: _pickAndSendImage,
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(
-              minWidth: 40,
-              minHeight: 40,
-            ),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           ),
           const SizedBox(width: 4),
-          
-          // Text input container with cyan glow outline and stacked emoji button
+
+          // Decorated container for chat box with cyan outline border
           Expanded(
             child: Container(
               constraints: const BoxConstraints(
@@ -181,7 +202,12 @@ class _ChatInputFieldState extends State<ChatInputField> {
                 alignment: Alignment.centerRight,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(left: 12, right: 40, top: 2, bottom: 2),
+                    padding: const EdgeInsets.only(
+                      left: 12,
+                      right: 40,
+                      top: 2,
+                      bottom: 2,
+                    ),
                     child: TextField(
                       controller: _controller,
                       style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -189,7 +215,10 @@ class _ChatInputFieldState extends State<ChatInputField> {
                       keyboardType: TextInputType.multiline,
                       decoration: const InputDecoration(
                         hintText: 'Type a message...',
-                        hintStyle: TextStyle(color: Colors.white24, fontSize: 14),
+                        hintStyle: TextStyle(
+                          color: Colors.white24,
+                          fontSize: 14,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(vertical: 10),
@@ -202,7 +231,11 @@ class _ChatInputFieldState extends State<ChatInputField> {
                     top: 0,
                     child: Center(
                       child: IconButton(
-                        icon: const Icon(Icons.sentiment_satisfied_alt_rounded, color: Colors.white54, size: 22),
+                        icon: const Icon(
+                          Icons.sentiment_satisfied_alt_rounded,
+                          color: Colors.white54,
+                          size: 22,
+                        ),
                         onPressed: _showEmojiPicker,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(
@@ -217,7 +250,7 @@ class _ChatInputFieldState extends State<ChatInputField> {
             ),
           ),
           const SizedBox(width: 12),
-          
+
           // Blue paper airplane send button matching design (40x40)
           GestureDetector(
             onTap: _handleSend,
@@ -235,7 +268,11 @@ class _ChatInputFieldState extends State<ChatInputField> {
                   ),
                 ],
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+              child: const Icon(
+                Icons.send_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
           ),
         ],
