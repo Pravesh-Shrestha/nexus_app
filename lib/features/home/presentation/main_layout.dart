@@ -5,6 +5,8 @@ import 'package:nexus_app/features/profile/presentation/profile_screen.dart';
 import 'package:nexus_app/features/chat/presentation/inbox_screen.dart';
 import 'package:animated_notch_bottom_bar/animated_notch_bottom_bar/animated_notch_bottom_bar.dart';
 
+import 'package:nexus_app/features/explore/presentation/explore_screen.dart';
+
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
 
@@ -27,7 +29,7 @@ class _MainLayoutState extends State<MainLayout> {
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    const Center(child: Text('Explore Screen', style: TextStyle(color: Colors.white))),
+    const ExploreScreen(),
     const InboxScreen(),
     const ProfileScreen(),
   ];
