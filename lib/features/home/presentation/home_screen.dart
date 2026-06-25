@@ -206,20 +206,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Friends Section (only shown when user has friends)
-                      if (_friends.isNotEmpty) ...[
-                        _buildSectionHeader(
-                          'Friends',
-                          'Find Allies',
-                          onTapAction: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const FindAllyScreen(),
-                              ),
-                            ).then((_) => _loadHomeData());
-                          },
-                        ),
-                        const SizedBox(height: 16),
+                      // Friends Section
+                      _buildSectionHeader(
+                        'Friends',
+                        'Find Allies',
+                        onTapAction: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const FindAllyScreen(),
+                            ),
+                          ).then((_) => _loadHomeData());
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      if (_friends.isNotEmpty)
                         SizedBox(
                           height: 100,
                           child: ListView.builder(
@@ -245,9 +245,69 @@ class _HomeScreenState extends State<HomeScreen> {
                               );
                             },
                           ),
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(AppSizes.r16),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text(
+                                      'No friends yet',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      'Discover players to build your squad!',
+                                      style: TextStyle(
+                                        color: AppColors.textMuted,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primaryPurple,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    textStyle: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const FindAllyScreen(),
+                                      ),
+                                    ).then((_) => _loadHomeData());
+                                  },
+                                  child: const Text('Find Allies'),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 24),
-                      ],
+                      const SizedBox(height: 24),
 
                       // Recommended Players Section (only shown when there are recommendations)
                       if (_recommended.isNotEmpty) ...[
