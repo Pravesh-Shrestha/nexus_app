@@ -481,16 +481,16 @@ class _InboxScreenState extends State<InboxScreen> {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  if (room.lastMessage.isNotEmpty && index == 0) // Mock a badge count on the latest chat for UI richness
+                                  if (room.unreadCount > 0)
                                     Container(
                                       padding: const EdgeInsets.all(6),
                                       decoration: const BoxDecoration(
                                         color: AppColors.primaryCyan,
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Text(
-                                        '3',
-                                        style: TextStyle(
+                                      child: Text(
+                                        '${room.unreadCount}',
+                                        style: const TextStyle(
                                           color: Colors.black,
                                           fontSize: 9,
                                           fontWeight: FontWeight.bold,

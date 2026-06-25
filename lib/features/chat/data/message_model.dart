@@ -5,12 +5,16 @@ class MessageModel {
   final String senderId;
   final String text;
   final DateTime timestamp;
+  final String type; // 'text' | 'image'
+  final String imageUrl;
 
   MessageModel({
     required this.id,
     required this.senderId,
     required this.text,
     required this.timestamp,
+    this.type = 'text',
+    this.imageUrl = '',
   });
 
   Map<String, dynamic> toJson() {
@@ -19,6 +23,8 @@ class MessageModel {
       'senderId': senderId,
       'text': text,
       'timestamp': Timestamp.fromDate(timestamp),
+      'type': type,
+      'imageUrl': imageUrl,
     };
   }
 
@@ -29,6 +35,8 @@ class MessageModel {
       senderId: json['senderId'] ?? '',
       text: json['text'] ?? '',
       timestamp: ts.toDate(),
+      type: json['type'] ?? 'text',
+      imageUrl: json['imageUrl'] ?? '',
     );
   }
 }

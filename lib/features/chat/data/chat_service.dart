@@ -53,7 +53,7 @@ class ChatService {
   }
 
   // Send a message
-  Future<void> sendMessage(String chatId, String senderId, String text) async {
+  Future<void> sendMessage(String chatId, String senderId, String text, {String type = 'text', String imageUrl = ''}) async {
     try {
       // Check if participants of this chat are still friends
       final chatDoc = await _firestore.collection('chats').doc(chatId).get();
@@ -81,18 +81,37 @@ class ChatService {
         senderId: senderId,
         text: text,
         timestamp: DateTime.now(),
+        type: type,
+        imageUrl: imageUrl,
       );
 
       await docRef.set(message.toJson());
       
-      // Update chat room's last message time and metadata
-      await _firestore.collection('chats').doc(chatId).set({
-        'lastMessage': text,
+      // Update chat room's last message time, lastMessage, and increment recipient's unread count
+      final Map<String, dynamic> updateData = {
+        'lastMessage': type == 'image' ? 'Sent a photo' : text,
         'lastMessageTime': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      };
+      
+      if (otherUserId.isNotEmpty) {
+        updateData['unreadCounts.$otherUserId'] = FieldValue.increment(1);
+      }
+
+      await _firestore.collection('chats').doc(chatId).set(updateData, SetOptions(merge: true));
     } catch (e) {
       throw 'Failed to send message: $e';
     }
+  }
+
+  // Reset unread count for current user
+  Future<void> markChatAsRead(String chatId, String currentUserId) async {
+    try {
+      await _firestore.collection('chats').doc(chatId).set({
+        'unreadCounts': {
+          currentUserId: 0,
+        }
+      }, SetOptions(merge: true));
+    } catch (_) {}
   }
 
   // Get active conversations list for current user
@@ -116,11 +135,15 @@ class ChatService {
             final userDoc = await _firestore.collection('users').doc(otherUserId).get();
             if (userDoc.exists && userDoc.data() != null) {
               final recipient = UserModel.fromJson(userDoc.data()!);
+              final unreadCounts = Map<String, dynamic>.from(data['unreadCounts'] ?? {});
+              final unreadCount = unreadCounts[currentUserId] as int? ?? 0;
+
               rooms.add(ChatRoom(
                 id: doc.id,
                 lastMessage: data['lastMessage'] ?? '',
                 lastMessageTime: (data['lastMessageTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
                 recipient: recipient,
+                unreadCount: unreadCount,
               ));
             }
           } catch (_) {}
@@ -138,12 +161,14 @@ class ChatRoom {
   final String lastMessage;
   final DateTime lastMessageTime;
   final UserModel recipient;
+  final int unreadCount;
 
   ChatRoom({
     required this.id,
     required this.lastMessage,
     required this.lastMessageTime,
     required this.recipient,
+    required this.unreadCount,
   });
 }
 

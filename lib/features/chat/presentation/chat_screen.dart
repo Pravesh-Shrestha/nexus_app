@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/chat/data/chat_service.dart';
 import 'package:nexus_app/features/chat/data/message_model.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
+import 'package:nexus_app/features/chat/presentation/widgets/chat_bubble.dart';
+import 'package:nexus_app/features/chat/presentation/widgets/chat_input_field.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -21,23 +25,43 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ChatService _chatService = ChatService();
   final String _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  
+  StreamSubscription<DocumentSnapshot>? _chatRoomSubscription;
+  Map<String, dynamic> _unreadCounts = {};
+  bool _isUploading = false;
 
   @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _subscribeToChatRoom();
+    _markAsRead();
   }
 
-  void _sendMessage() async {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) return;
+  void _subscribeToChatRoom() {
+    _chatRoomSubscription = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.chatId)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists && mounted) {
+        final data = snapshot.data();
+        if (data != null) {
+          setState(() {
+            _unreadCounts = Map<String, dynamic>.from(data['unreadCounts'] ?? {});
+          });
+        }
+      }
+    });
+  }
 
-    _messageController.clear();
+  void _markAsRead() {
+    _chatService.markChatAsRead(widget.chatId, _currentUserId);
+  }
+
+  void _sendMessage(String text) async {
     try {
       await _chatService.sendMessage(widget.chatId, _currentUserId, text);
       _scrollToBottom();
@@ -46,6 +70,28 @@ class _ChatScreenState extends State<ChatScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to send message: $e'),
+            backgroundColor: AppColors.errorRed,
+          ),
+        );
+      }
+    }
+  }
+
+  void _sendImage(String imageUrl) async {
+    try {
+      await _chatService.sendMessage(
+        widget.chatId,
+        _currentUserId,
+        'Sent a photo',
+        type: 'image',
+        imageUrl: imageUrl,
+      );
+      _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send image: $e'),
             backgroundColor: AppColors.errorRed,
           ),
         );
@@ -87,15 +133,114 @@ class _ChatScreenState extends State<ChatScreen> {
     return items;
   }
 
-  String _formatMessageTime(DateTime dateTime) {
-    final diff = DateTime.now().difference(dateTime);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+  Set<String> _calculateReadMessageIds(List<MessageModel> messages) {
+    final Set<String> readIds = {};
+    final recipientUnreadCount = _unreadCounts[widget.recipient.uid] as int? ?? 0;
     
-    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : (dateTime.hour == 0 ? 12 : dateTime.hour);
-    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
-    final minute = dateTime.minute < 10 ? '0${dateTime.minute}' : '${dateTime.minute}';
-    return '$hour:$minute $period';
+    int mySentCount = 0;
+    for (var message in messages) {
+      if (message.senderId == _currentUserId) {
+        mySentCount++;
+        if (mySentCount > recipientUnreadCount) {
+          readIds.add(message.id);
+        }
+      }
+    }
+    return readIds;
+  }
+
+  Widget _buildUploadingBubble() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.all(4),
+            width: 200,
+            height: 150,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFF4B39EF),
+                width: 1.2,
+              ),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    color: AppColors.primaryCyan,
+                    strokeWidth: 2,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Uploading photo...',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12, right: 4),
+            child: Text(
+              'Sending...',
+              style: TextStyle(color: Colors.white24, fontSize: 10),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateDivider(DateTime date) {
+    String dateStr = '';
+    final now = DateTime.now();
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    
+    if (date.year == now.year && date.month == now.month && date.day == now.day) {
+      dateStr = 'TODAY';
+    } else if (date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day) {
+      dateStr = 'YESTERDAY';
+    } else {
+      dateStr = '${date.day}/${date.month}/${date.year}';
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 20),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(color: Colors.white12, thickness: 1)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              dateStr,
+              style: const TextStyle(
+                color: Colors.white30,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+          const Expanded(child: Divider(color: Colors.white12, thickness: 1)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _chatRoomSubscription?.cancel();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -152,7 +297,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(
               widget.recipient.fullName.isNotEmpty ? widget.recipient.fullName : widget.recipient.username,
               style: const TextStyle(
-                color: Color(0xFF58A6FF), // Cyan/Blue shade matching the design
+                color: Color(0xFF58A6FF),
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -189,6 +334,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white54)));
                   }
                   final messages = snapshot.data ?? [];
+                  
+                  if (messages.isNotEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _markAsRead();
+                    });
+                  }
+
                   if (messages.isEmpty) {
                     return Center(
                       child: Column(
@@ -206,321 +358,49 @@ class _ChatScreenState extends State<ChatScreen> {
                   }
 
                   final groupedItems = _groupMessages(messages);
+                  final readMessageIds = _calculateReadMessageIds(messages);
 
                   return ListView.builder(
                     reverse: true,
                     controller: _scrollController,
                     padding: const EdgeInsets.symmetric(horizontal: AppSizes.p16, vertical: 8),
-                    itemCount: groupedItems.length,
+                    itemCount: groupedItems.length + (_isUploading ? 1 : 0),
                     itemBuilder: (context, index) {
-                      final item = groupedItems[index];
+                      if (_isUploading && index == 0) {
+                        return _buildUploadingBubble();
+                      }
+                      
+                      final itemIndex = _isUploading ? index - 1 : index;
+                      final item = groupedItems[itemIndex];
                       if (item is DateTime) {
                         return _buildDateDivider(item);
                       }
                       final message = item as MessageModel;
                       final isMe = message.senderId == _currentUserId;
-                      return _buildMessageBubble(message, isMe);
+                      return ChatBubble(
+                        message: message,
+                        isMe: isMe,
+                        isRead: readMessageIds.contains(message.id),
+                      );
                     },
                   );
                 },
               ),
             ),
             
-            // Redesigned Custom Input Field Container
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                  top: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  // Paperclip attachment button
-                  IconButton(
-                    icon: const Icon(Icons.attach_file_rounded, color: Colors.white54, size: 22),
-                    onPressed: () {},
-                  ),
-                  const SizedBox(width: 4),
-                  
-                  // Text input container with cyan glow outline
-                  Expanded(
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppColors.primaryCyan.withValues(alpha: 0.4),
-                          width: 1.5,
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _messageController,
-                              style: const TextStyle(color: Colors.white, fontSize: 14),
-                              decoration: const InputDecoration(
-                                hintText: 'Type a message...',
-                                hintStyle: TextStyle(color: Colors.white24, fontSize: 14),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.sentiment_satisfied_alt_rounded, color: Colors.white54, size: 22),
-                            onPressed: () {},
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  
-                  // Blue paper airplane send button matching design
-                  GestureDetector(
-                    onTap: _sendMessage,
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6C8CFF), // Indigo/Blue from design
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6C8CFF).withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-                    ),
-                  ),
-                ],
-              ),
+            // Bottom chat input field
+            ChatInputField(
+              onSendMessage: _sendMessage,
+              onImageSent: _sendImage,
+              onUploadStateChanged: (uploading) {
+                setState(() {
+                  _isUploading = uploading;
+                });
+              },
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildDateDivider(DateTime date) {
-    String dateStr = '';
-    final now = DateTime.now();
-    final yesterday = DateTime.now().subtract(const Duration(days: 1));
-    
-    if (date.year == now.year && date.month == now.month && date.day == now.day) {
-      dateStr = 'TODAY';
-    } else if (date.year == yesterday.year && date.month == yesterday.month && date.day == yesterday.day) {
-      dateStr = 'YESTERDAY';
-    } else {
-      dateStr = '${date.day}/${date.month}/${date.year}';
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 20),
-      child: Row(
-        children: [
-          const Expanded(child: Divider(color: Colors.white12, thickness: 1)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              dateStr,
-              style: const TextStyle(
-                color: Colors.white30,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-              ),
-            ),
-          ),
-          const Expanded(child: Divider(color: Colors.white12, thickness: 1)),
-        ],
-      ),
-    );
-  }
-
-  bool _isFileMessage(String text) {
-    return text.toLowerCase().endsWith('.docx') ||
-        text.toLowerCase().endsWith('.pdf') ||
-        text.toLowerCase().endsWith('.xlsx') ||
-        text.toLowerCase().endsWith('.pptx');
-  }
-
-  Widget _buildMessageText(String text) {
-    String cleanText = text;
-    bool isItalic = false;
-
-    // Support basic *italic* or _italic_ formatting
-    if ((text.startsWith('_') && text.endsWith('_')) ||
-        (text.startsWith('*') && text.endsWith('*'))) {
-      cleanText = text.substring(1, text.length - 1);
-      isItalic = true;
-    }
-
-    return Text(
-      cleanText,
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 14,
-        fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
-        height: 1.4,
-      ),
-    );
-  }
-
-  Widget _buildFileBubble(String filename) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      width: 280,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF4B39EF), // Indigo border matching the design
-          width: 1.2,
-        ),
-      ),
-      padding: const EdgeInsets.all(12),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.description_rounded,
-              color: AppColors.primaryCyan,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  filename,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  '487 KB',
-                  style: TextStyle(
-                    color: Colors.white30,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.download_rounded,
-              color: Colors.white70,
-              size: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble(MessageModel message, bool isMe) {
-    final isFile = _isFileMessage(message.text);
-
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          if (isFile)
-            _buildFileBubble(message.text)
-          else if (isMe)
-            // Sent bubble with solid background and thin purple/indigo outline
-            Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.surface, // Solid dark grey matching the design
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFF4B39EF), // Solid indigo border
-                  width: 1.2,
-                ),
-              ),
-              child: _buildMessageText(message.text),
-            )
-          else
-            // Received bubble (solid dark background, no border)
-            Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B1C22), // Solid dark grey matching the design
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: _buildMessageText(message.text),
-            ),
-          
-          // Time representation below the bubble
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12, left: 4, right: 4),
-            child: isMe
-                ? Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _formatMessageTime(message.timestamp),
-                        style: const TextStyle(color: Colors.white24, fontSize: 10),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.done_all_rounded,
-                        color: AppColors.statusOnline, // Green checkmarks
-                        size: 14,
-                      ),
-                    ],
-                  )
-                : Text(
-                    _formatMessageTime(message.timestamp),
-                    style: const TextStyle(color: Colors.white24, fontSize: 10),
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
 }
-
