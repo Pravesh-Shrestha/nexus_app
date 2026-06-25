@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/chat/data/message_model.dart';
 import 'package:nexus_app/features/friends/data/friends_service.dart';
+import 'package:nexus_app/features/auth/data/user_model.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -93,5 +94,56 @@ class ChatService {
       throw 'Failed to send message: $e';
     }
   }
+
+  // Get active conversations list for current user
+  Stream<List<ChatRoom>> getChatRooms(String currentUserId) {
+    return _firestore
+        .collection('chats')
+        .where('participants', arrayContains: currentUserId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      final List<ChatRoom> rooms = [];
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final participants = List<String>.from(data['participants'] ?? []);
+        final otherUserId = participants.firstWhere(
+          (id) => id != currentUserId,
+          orElse: () => '',
+        );
+
+        if (otherUserId.isNotEmpty) {
+          try {
+            final userDoc = await _firestore.collection('users').doc(otherUserId).get();
+            if (userDoc.exists && userDoc.data() != null) {
+              final recipient = UserModel.fromJson(userDoc.data()!);
+              rooms.add(ChatRoom(
+                id: doc.id,
+                lastMessage: data['lastMessage'] ?? '',
+                lastMessageTime: (data['lastMessageTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
+                recipient: recipient,
+              ));
+            }
+          } catch (_) {}
+        }
+      }
+      // Sort by lastMessageTime descending
+      rooms.sort((a, b) => b.lastMessageTime.compareTo(a.lastMessageTime));
+      return rooms;
+    });
+  }
+}
+
+class ChatRoom {
+  final String id;
+  final String lastMessage;
+  final DateTime lastMessageTime;
+  final UserModel recipient;
+
+  ChatRoom({
+    required this.id,
+    required this.lastMessage,
+    required this.lastMessageTime,
+    required this.recipient,
+  });
 }
 
