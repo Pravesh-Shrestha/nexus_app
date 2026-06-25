@@ -26,6 +26,7 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
 
   String? _currentUserId;
   String? _currentUsername;
+  int _selectedTabIndex = 0; // 0: People, 1: Requested, 2: Requests
 
   @override
   void initState() {
@@ -135,13 +136,13 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: Colors.redAccent,
+        backgroundColor: AppColors.errorRed,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  // ── Helper ───────────────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
   Color _avatarColor(String uid) {
     const colors = [
@@ -165,61 +166,239 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
   String _displayName(UserModel u) =>
       u.fullName.isNotEmpty ? u.fullName : u.username;
 
+  Widget _avatar(UserModel u, Color fallbackColor) {
+    final hasImage = u.profileImageUrl.isNotEmpty;
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: fallbackColor.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: fallbackColor.withValues(alpha: 0.1),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: hasImage
+            ? Image.network(
+                u.profileImageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _fallbackAvatarWidget(u, fallbackColor),
+              )
+            : _fallbackAvatarWidget(u, fallbackColor),
+      ),
+    );
+  }
+
+  Widget _fallbackAvatarWidget(UserModel u, Color color) {
+    return Container(
+      color: color.withValues(alpha: 0.18),
+      alignment: Alignment.center,
+      child: Text(
+        _initials(u),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 18,
+        ),
+      ),
+    );
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
+
+  Widget _buildHorizontalSelector() {
+    final options = [
+      {'title': 'People', 'count': _discoverPlayers.length},
+      {'title': 'Requested', 'count': _sentRequests.length},
+      {'title': 'Requests', 'count': _receivedRequests.length},
+    ];
+
+    return SizedBox(
+      height: 40,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+        itemCount: options.length,
+        itemBuilder: (context, index) {
+          final opt = options[index];
+          final title = opt['title'] as String;
+          final count = opt['count'] as int;
+          final isSelected = _selectedTabIndex == index;
+
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedTabIndex = index;
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? const LinearGradient(
+                        colors: [
+                          AppColors.primaryPurple,
+                          AppColors.primaryCyan,
+                        ],
+                      )
+                    : null,
+                color: isSelected ? null : AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected
+                      ? Colors.transparent
+                      : Colors.white.withValues(alpha: 0.05),
+                  width: 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primaryPurple.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white60,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
+                  if (count > 0) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : AppColors.surfaceHighlight,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected
+                              ? Colors.white30
+                              : Colors.white.withValues(alpha: 0.05),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : AppColors.primaryCyan,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSelectedContent() {
+    switch (_selectedTabIndex) {
+      case 0: // People (Discover)
+        return _buildTabContent(
+          onRefresh: _loadData,
+          isEmpty: _discoverPlayers.isEmpty,
+          emptyWidget: _emptyState(
+            icon: Icons.people_outline_rounded,
+            message: 'No new players to discover yet.',
+          ),
+          itemCount: _discoverPlayers.length,
+          itemBuilder: (context, index) => _discoverCard(_discoverPlayers[index]),
+        );
+      case 1: // Requested (Sent)
+        return _buildTabContent(
+          onRefresh: _loadData,
+          isEmpty: _sentRequests.isEmpty,
+          emptyWidget: _emptyState(
+            icon: Icons.hourglass_empty_rounded,
+            message: 'You haven\'t sent any requests.',
+          ),
+          itemCount: _sentRequests.length,
+          itemBuilder: (context, index) => _sentCard(_sentRequests[index]),
+        );
+      case 2: // Requests (Received)
+        return _buildTabContent(
+          onRefresh: _loadData,
+          isEmpty: _receivedRequests.isEmpty,
+          emptyWidget: _emptyState(
+            icon: Icons.inbox_rounded,
+            message: 'No incoming friend requests right now.',
+          ),
+          itemCount: _receivedRequests.length,
+          itemBuilder: (context, index) => _receivedCard(_receivedRequests[index]),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: AppSizes.p24),
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.surfaceHighlight,
+                  border: Border.all(
+                      color: AppColors.primaryCyan.withValues(alpha: 0.2),
+                      width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryCyan.withValues(alpha: 0.15),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.group_outlined,
+                    color: AppColors.primaryCyan, size: 18),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ─────────────────────────────────────────────────────
+            // Screen Title Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSizes.p24, 12, AppSizes.p24, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.transparent,
-                      ),
-                      child: const Icon(Icons.arrow_back_ios_new,
-                          color: Colors.white, size: 20),
-                    ),
-                  ),
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.surfaceHighlight,
-                      border: Border.all(
-                          color: AppColors.primaryCyan.withValues(alpha: 0.2),
-                          width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryCyan.withValues(alpha: 0.2),
-                          blurRadius: 14,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.group_outlined,
-                        color: AppColors.primaryCyan, size: 20),
-                  ),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  AppSizes.p24, 20, AppSizes.p24, 0),
+              padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
@@ -227,95 +406,31 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                     'Find Your Ally',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 30,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   SizedBox(height: 4),
                   Text(
                     'Connect with players. Build your squad.',
-                    style: TextStyle(color: Colors.white38, fontSize: 13),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 24),
 
+            // Horizontal Selector
+            _buildHorizontalSelector(),
             const SizedBox(height: 20),
 
-            // ── Body ───────────────────────────────────────────────────────
+            // Selected View Content
             Expanded(
               child: _isLoading
                   ? const Center(
                       child: CircularProgressIndicator(
                           color: AppColors.primaryPurple))
-                  : RefreshIndicator(
-                      color: AppColors.primaryPurple,
-                      onRefresh: _loadData,
-                      child: ListView(
-                        padding: const EdgeInsets.only(bottom: 32),
-                        children: [
-                          // 1 — Received Requests
-                          _buildSection(
-                            icon: Icons.person_add_alt_1_rounded,
-                            iconColor: const Color(0xFF00E5AA),
-                            title: 'Friend Requests',
-                            subtitle: 'People who want to connect with you',
-                            count: _receivedRequests.length,
-                            child: _receivedRequests.isEmpty
-                                ? _emptyState(
-                                    icon: Icons.inbox_rounded,
-                                    message:
-                                        'No incoming friend requests right now.',
-                                  )
-                                : Column(
-                                    children: _receivedRequests
-                                        .map((e) =>
-                                            _receivedCard(e))
-                                        .toList(),
-                                  ),
-                          ),
-
-                          // 2 — Sent Requests
-                          _buildSection(
-                            icon: Icons.send_rounded,
-                            iconColor: AppColors.primaryCyan,
-                            title: 'Requests Sent',
-                            subtitle: 'Waiting for their response',
-                            count: _sentRequests.length,
-                            child: _sentRequests.isEmpty
-                                ? _emptyState(
-                                    icon: Icons.hourglass_empty_rounded,
-                                    message: 'You haven\'t sent any requests.',
-                                  )
-                                : Column(
-                                    children: _sentRequests
-                                        .map((e) => _sentCard(e))
-                                        .toList(),
-                                  ),
-                          ),
-
-                          // 3 — Discover Players
-                          _buildSection(
-                            icon: Icons.explore_rounded,
-                            iconColor: AppColors.primaryPurple,
-                            title: 'Discover Players',
-                            subtitle: 'New people you can connect with',
-                            count: _discoverPlayers.length,
-                            child: _discoverPlayers.isEmpty
-                                ? _emptyState(
-                                    icon: Icons.people_outline_rounded,
-                                    message:
-                                        'No new players to discover yet.',
-                                  )
-                                : Column(
-                                    children: _discoverPlayers
-                                        .map((p) => _discoverCard(p))
-                                        .toList(),
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  : _buildSelectedContent(),
             ),
           ],
         ),
@@ -323,279 +438,47 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
     );
   }
 
-  // ── Section wrapper ───────────────────────────────────────────────────────
-
-  Widget _buildSection({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required int count,
-    required Widget child,
+  Widget _buildTabContent({
+    required Future<void> Function() onRefresh,
+    required bool isEmpty,
+    required Widget emptyWidget,
+    required int itemCount,
+    required Widget Function(BuildContext, int) itemBuilder,
   }) {
-    return Padding(
-      padding:
-          const EdgeInsets.fromLTRB(AppSizes.p24, 0, AppSizes.p24, 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section header
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: iconColor, size: 18),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (count > 0) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: iconColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '$count',
-                              style: TextStyle(
-                                color: iconColor,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                          color: Colors.white38, fontSize: 11),
-                    ),
-                  ],
+    if (isEmpty) {
+      return RefreshIndicator(
+        color: AppColors.primaryPurple,
+        onRefresh: onRefresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.45,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                  child: emptyWidget,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
-  }
-
-  // ── Received request card ─────────────────────────────────────────────────
-
-  Widget _receivedCard(FriendRequestEntry entry) {
-    final u = entry.user;
-    final color = _avatarColor(u.uid);
-    final processing = _processingIds.contains(entry.request.id);
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context)
-            .push(MaterialPageRoute(
-                builder: (_) => ViewFriendScreen(userModel: u)))
-            .then((_) => _loadData());
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: const Color(0xFF00E5AA).withValues(alpha: 0.18), width: 1),
-        ),
-        child: Row(
-          children: [
-            // Avatar
-            _avatar(u, color),
-            const SizedBox(width: 14),
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_displayName(u),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14)),
-                  if (u.username.isNotEmpty)
-                    Text('@${u.username}',
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
-                ],
-              ),
             ),
-            // Buttons
-            if (processing)
-              const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primaryPurple))
-            else
-              Row(
-                children: [
-                  // Decline
-                  GestureDetector(
-                    onTap: () => _declineRequest(entry),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color:
-                                Colors.redAccent.withValues(alpha: 0.3)),
-                      ),
-                      child: const Icon(Icons.close_rounded,
-                          color: Colors.redAccent, size: 18),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Accept
-                  GestureDetector(
-                    onTap: () => _acceptRequest(entry),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00E5AA)
-                            .withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: const Color(0xFF00E5AA)
-                                .withValues(alpha: 0.4)),
-                      ),
-                      child: const Icon(Icons.check_rounded,
-                          color: Color(0xFF00E5AA), size: 18),
-                    ),
-                  ),
-                ],
-              ),
           ],
         ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primaryPurple,
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(AppSizes.p24, 0, AppSizes.p24, 40),
+        itemCount: itemCount,
+        itemBuilder: itemBuilder,
       ),
     );
   }
 
-  // ── Sent request card ─────────────────────────────────────────────────────
-
-  Widget _sentCard(FriendRequestEntry entry) {
-    final u = entry.user;
-    final color = _avatarColor(u.uid);
-    final processing = _processingIds.contains(entry.request.id);
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context)
-            .push(MaterialPageRoute(
-                builder: (_) => ViewFriendScreen(userModel: u)))
-            .then((_) => _loadData());
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-        ),
-        child: Row(
-          children: [
-            _avatar(u, color),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_displayName(u),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14)),
-                  if (u.username.isNotEmpty)
-                    Text('@${u.username}',
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
-                ],
-              ),
-            ),
-            // Pending chip + Cancel
-            if (processing)
-              const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primaryPurple))
-            else
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryCyan.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text(
-                      'Pending',
-                      style: TextStyle(
-                          color: AppColors.primaryCyan,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => _cancelRequest(entry),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white12),
-                      ),
-                      child: const Icon(Icons.close_rounded,
-                          color: Colors.white38, size: 16),
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Discover card ─────────────────────────────────────────────────────────
+  // ── Cards ─────────────────────────────────────────────────────────────────
 
   Widget _discoverCard(UserModel player) {
     final color = _avatarColor(player.uid);
@@ -613,30 +496,45 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
             .then((_) => _loadData());
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.05),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
             _avatar(player, color),
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_displayName(player),
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14)),
+                  Text(
+                    _displayName(player),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
                   if (badges.isNotEmpty) ...[
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
                     Wrap(
-                      spacing: 5,
+                      spacing: 6,
+                      runSpacing: 4,
                       children: badges
                           .map((b) => Container(
                                 padding: const EdgeInsets.symmetric(
@@ -644,38 +542,49 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                                 decoration: BoxDecoration(
                                   color: AppColors.surfaceHighlight,
                                   borderRadius: BorderRadius.circular(6),
-                                  border:
-                                      Border.all(color: Colors.white10),
+                                  border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.08)),
                                 ),
-                                child: Text(b,
-                                    style: const TextStyle(
-                                        color: Colors.white38,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold)),
+                                child: Text(
+                                  b.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppColors.primaryCyan,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                               ))
                           .toList(),
                     ),
                   ] else
-                    Text('@${player.username}',
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 11)),
+                    Text(
+                      '@${player.username}',
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
                 ],
               ),
             ),
+            const SizedBox(width: 12),
             // Add button
             if (processing)
               const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.primaryPurple))
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.primaryPurple,
+                ),
+              )
             else
               GestureDetector(
                 onTap: () => _sendRequest(player),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 8),
+                      horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [
@@ -684,13 +593,21 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
                       ],
                     ),
                     borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryPurple.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: const Text(
                     'Add',
                     style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -700,49 +617,301 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
     );
   }
 
-  // ── Shared avatar widget ──────────────────────────────────────────────────
+  Widget _receivedCard(FriendRequestEntry entry) {
+    final u = entry.user;
+    final color = _avatarColor(u.uid);
+    final processing = _processingIds.contains(entry.request.id);
 
-  Widget _avatar(UserModel u, Color color) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withValues(alpha: 0.18),
-        border: Border.all(color: color.withValues(alpha: 0.35), width: 1.5),
-      ),
-      child: Center(
-        child: Text(
-          _initials(u),
-          style: TextStyle(
-              color: color, fontWeight: FontWeight.bold, fontSize: 17),
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context)
+            .push(MaterialPageRoute(
+                builder: (_) => ViewFriendScreen(userModel: u)))
+            .then((_) => _loadData());
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primaryCyan.withValues(alpha: 0.15),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryCyan.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            _avatar(u, color),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _displayName(u),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '@${u.username}',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (processing)
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.primaryPurple,
+                ),
+              )
+            else
+              Row(
+                children: [
+                  // Decline Button
+                  GestureDetector(
+                    onTap: () => _declineRequest(entry),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.errorRed.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.errorRed.withValues(alpha: 0.25),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: AppColors.errorRed,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Accept Button
+                  GestureDetector(
+                    onTap: () => _acceptRequest(entry),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.statusOnline.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.statusOnline.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.statusOnline.withValues(alpha: 0.1),
+                            blurRadius: 6,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.check_rounded,
+                        color: AppColors.statusOnline,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ),
       ),
     );
   }
 
-  // ── Empty state ───────────────────────────────────────────────────────────
+  Widget _sentCard(FriendRequestEntry entry) {
+    final u = entry.user;
+    final color = _avatarColor(u.uid);
+    final processing = _processingIds.contains(entry.request.id);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context)
+            .push(MaterialPageRoute(
+                builder: (_) => ViewFriendScreen(userModel: u)))
+            .then((_) => _loadData());
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.04),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            _avatar(u, color),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _displayName(u),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '@${u.username}',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (processing)
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.primaryPurple,
+                ),
+              )
+            else
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryCyan.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.primaryCyan.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Text(
+                      'Pending',
+                      style: TextStyle(
+                        color: AppColors.primaryCyan,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () => _cancelRequest(entry),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.03),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white60,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Empty State ──────────────────────────────────────────────────────────
 
   Widget _emptyState({required IconData icon, required String message}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.03),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 12,
+          ),
+        ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white12, size: 32),
-          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.02),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white24,
+              size: 40,
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white30, fontSize: 12),
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+              height: 1.4,
+            ),
           ),
         ],
       ),
     );
   }
 }
+

@@ -91,4 +91,4 @@ nexus_app/
 - [crypto](https://pub.dev/packages/crypto) - Hashing for secure Cloudinary uploads
 
 ## Authors
-- **Prabesh-Shrestha** - Initial work
+- **Prabesh-Shrestha**
