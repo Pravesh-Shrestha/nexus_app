@@ -481,20 +481,24 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
                   children: [
                     // Target Pulsing Rings
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primaryCyan, width: 1),
+                        border: Border.all(color: AppColors.primaryCyan, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryCyan.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
                     ),
-                    Container(
-                      width: 14,
-                      height: 14,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primaryCyan,
-                      ),
+                    _buildAvatarImage(
+                      _currentUserModel?.profileImageUrl ?? '',
+                      _currentUserModel?.username ?? 'You',
+                      size: 40,
                     ),
                   ],
                 ),

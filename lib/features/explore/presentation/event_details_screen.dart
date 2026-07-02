@@ -512,7 +512,9 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Hosted in $hostCommunity',
+                                        event.latitude != null
+                                            ? 'Hosted in $hostCommunity (${event.latitude!.toStringAsFixed(4)}, ${event.longitude!.toStringAsFixed(4)})'
+                                            : 'Hosted in $hostCommunity',
                                         style: const TextStyle(
                                           color: Colors.grey,
                                           fontSize: 12,

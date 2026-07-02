@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/event/data/event_service.dart';
@@ -16,6 +17,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _capacityController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
   final EventService _eventService = EventService();
   final CommunityService _communityService = CommunityService();
 
@@ -31,6 +33,10 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   bool _isLoadingCommunities = true;
   bool _isPublishing = false;
 
+  double? _latitude;
+  double? _longitude;
+  bool _isPinningGps = false;
+
   @override
   void initState() {
     super.initState();
@@ -41,7 +47,20 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   void dispose() {
     _titleController.dispose();
     _capacityController.dispose();
+    _locationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _simulateEventGpsPin() async {
+    setState(() => _isPinningGps = true);
+    await Future.delayed(const Duration(milliseconds: 800));
+    final double simulatedLat = 27.7172 + (math.Random().nextDouble() - 0.5) * 0.005;
+    final double simulatedLng = 85.3240 + (math.Random().nextDouble() - 0.5) * 0.005;
+    setState(() {
+      _latitude = simulatedLat;
+      _longitude = simulatedLng;
+      _isPinningGps = false;
+    });
   }
 
   void _loadMyCommunities() {
@@ -155,12 +174,17 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         orElse: () => CommunityModel(id: '', name: 'General', description: '', creatorId: ''),
       ).name;
 
+      final enteredLocation = _locationController.text.trim();
+      final defaultLoc = _isOnline ? 'Online' : 'Local meetup';
+
       await _eventService.createEvent(
         title: _titleController.text.trim(),
         description: 'Hosted by community: $hostCommunityName. Game: $_selectedGame.',
         organizerId: widget.currentUserId,
         dateTime: combinedDateTime,
-        location: _isOnline ? 'Online' : 'Local meetup',
+        location: enteredLocation.isEmpty ? defaultLoc : enteredLocation,
+        latitude: _latitude,
+        longitude: _longitude,
       );
 
       if (mounted) {
@@ -432,6 +456,80 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Event Location (Optional)
+                      const Text(
+                        'Location (Optional)',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _locationController,
+                        style: const TextStyle(color: Colors.white, fontSize: 15),
+                        decoration: InputDecoration(
+                          hintText: _isOnline ? 'e.g. Discord Voice Channel' : 'e.g. Kathmandu Cyber Cafe',
+                          hintStyle: const TextStyle(color: Colors.white24),
+                          fillColor: const Color(0xFF13141B),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.white10, width: 1),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.white10, width: 1),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: accentColor, width: 1),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      GestureDetector(
+                        onTap: _isPinningGps ? null : _simulateEventGpsPin,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.03),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white10),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.gps_fixed, color: _latitude != null ? AppColors.primaryCyan : Colors.white38, size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _latitude != null
+                                        ? 'GPS Calibrated (${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)})'
+                                        : 'Tac-GPS Coordinates (Optional)',
+                                    style: TextStyle(
+                                      color: _latitude != null ? Colors.white : Colors.white60,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              _isPinningGps
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5),
+                                    )
+                                  : Icon(Icons.sync, color: _latitude != null ? AppColors.primaryCyan : Colors.white38, size: 16),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 20),

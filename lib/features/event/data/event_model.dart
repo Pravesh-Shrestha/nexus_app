@@ -7,6 +7,8 @@ class EventModel {
   final String organizerId;
   final DateTime dateTime;
   final String location;
+  final double? latitude;
+  final double? longitude;
   final List<String> attendeeUids;
 
   EventModel({
@@ -16,6 +18,8 @@ class EventModel {
     required this.organizerId,
     required this.dateTime,
     this.location = '',
+    this.latitude,
+    this.longitude,
     this.attendeeUids = const [],
   });
 
@@ -27,6 +31,8 @@ class EventModel {
       'organizerId': organizerId,
       'dateTime': Timestamp.fromDate(dateTime),
       'location': location,
+      'latitude': latitude,
+      'longitude': longitude,
       'attendeeUids': attendeeUids,
     };
   }
@@ -40,6 +46,8 @@ class EventModel {
       organizerId: json['organizerId'] ?? '',
       dateTime: ts.toDate(),
       location: json['location'] ?? '',
+      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
+      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
       attendeeUids: List<String>.from(json['attendeeUids'] ?? []),
     );
   }

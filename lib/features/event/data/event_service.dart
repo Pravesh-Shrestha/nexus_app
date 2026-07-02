@@ -24,6 +24,8 @@ class EventService {
     required String organizerId,
     required DateTime dateTime,
     String location = '',
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       final docRef = _firestore.collection('events').doc();
@@ -34,6 +36,8 @@ class EventService {
         organizerId: organizerId,
         dateTime: dateTime,
         location: location,
+        latitude: latitude,
+        longitude: longitude,
         attendeeUids: [organizerId], // Organizer is automatically attending
       );
 

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:nexus_app/features/auth/presentation/setup_success_screen.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
@@ -28,6 +29,27 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final List<String> _selectedGames = [];
   String _selectedPlaystyle = 'Crazy';
   String _selectedSkillLevel = 'Pro';
+
+  double? _latitude;
+  double? _longitude;
+  String _locationName = '';
+  bool _isCalibratingGps = false;
+
+  Future<void> _calibrateGps() async {
+    setState(() => _isCalibratingGps = true);
+    await Future.delayed(const Duration(milliseconds: 1000));
+    final math.Random random = math.Random();
+    // Simulate latitude/longitude around Kathmandu
+    final double simulatedLat = 27.7172 + (random.nextDouble() - 0.5) * 0.005;
+    final double simulatedLng = 85.3240 + (random.nextDouble() - 0.5) * 0.005;
+
+    setState(() {
+      _latitude = simulatedLat;
+      _longitude = simulatedLng;
+      _locationName = 'Sector ${random.nextInt(100) + 10} Grid';
+      _isCalibratingGps = false;
+    });
+  }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -236,6 +258,68 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       }).toList(),
                     ),
                     
+                    // GPS LOCATION
+                    _buildSectionTitle('TACTICAL GPS POSITION (OPTIONAL)'),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16171D),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _latitude != null ? 'GRID CALIBRATED' : 'OFFLINE',
+                                  style: TextStyle(
+                                    color: _latitude != null ? const Color(0xFF00E5FF) : Colors.white38,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _latitude != null
+                                      ? '$_locationName (${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)})'
+                                      : 'Share your location to find allies nearby.',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _isCalibratingGps ? null : _calibrateGps,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _latitude != null ? Colors.white : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white24),
+                              ),
+                              child: _isCalibratingGps
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                    )
+                                  : Text(
+                                      _latitude != null ? 'Recalibrate' : 'Sync GPS',
+                                      style: TextStyle(
+                                        color: _latitude != null ? Colors.black : Colors.white70,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -261,6 +345,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     favoriteGames: _selectedGames,
                     playstyle: _selectedPlaystyle,
                     skillLevel: _selectedSkillLevel,
+                    latitude: _latitude,
+                    longitude: _longitude,
+                    location: _locationName,
                   );
 
                   final navigator = Navigator.of(context);
