@@ -421,7 +421,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       // Upcoming Events Section
                       _buildSectionHeader(
                         'Upcoming Events',
-                        'View Calendar',
+                        'Explore All',
                         onTapAction: () {
                           TabNavigationController.exploreEventsTab.value = true;
                           TabNavigationController.activeTab.value = 1;
