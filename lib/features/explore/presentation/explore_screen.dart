@@ -6,6 +6,9 @@ import 'package:nexus_app/features/community/data/community_model.dart';
 import 'package:nexus_app/features/community/data/community_service.dart';
 import 'package:nexus_app/features/event/data/event_model.dart';
 import 'package:nexus_app/features/event/data/event_service.dart';
+import 'package:nexus_app/features/explore/presentation/create_community_screen.dart';
+import 'package:nexus_app/features/explore/presentation/create_event_screen.dart';
+import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -49,12 +52,59 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void _showCreateBottomSheet() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _CreateSpaceSheet(
-        currentUserId: _currentUserId,
-        communityService: _communityService,
-        eventService: _eventService,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'CREATE SPACE',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.group_outlined, color: Color(0xFF6C8CFF)),
+              title: const Text('New Community', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              subtitle: const Text('Create an invite-only or public community', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CreateCommunityScreen(currentUserId: _currentUserId),
+                  ),
+                );
+              },
+            ),
+            const Divider(color: Colors.white10),
+            ListTile(
+              leading: const Icon(Icons.event_outlined, color: AppColors.primaryPurple),
+              title: const Text('New Event', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              subtitle: const Text('Publish an online or offline meetup event', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CreateEventScreen(currentUserId: _currentUserId),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
@@ -613,118 +663,131 @@ class _ExploreScreenState extends State<ExploreScreen> {
               badgeColor = AppColors.primaryCyan;
             }
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isGoing ? AppColors.primaryPurple.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
-                  width: isGoing ? 1.5 : 1.0,
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EventDetailsScreen(
+                      event: event,
+                      currentUserId: _currentUserId,
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isGoing ? AppColors.primaryPurple.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
+                    width: isGoing ? 1.5 : 1.0,
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  // Calendar/Image Box Left
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceHighlight,
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        colors: [
-                          badgeColor.withValues(alpha: 0.15),
-                          Colors.transparent,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                child: Row(
+                  children: [
+                    // Calendar/Image Box Left
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceHighlight,
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          colors: [
+                            badgeColor.withValues(alpha: 0.15),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.calendar_today_rounded,
+                        color: Colors.white70,
+                        size: 22,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.calendar_today_rounded,
-                      color: Colors.white70,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
+                    const SizedBox(width: 14),
 
-                  // Middle Details Block
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                event.title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: badgeColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: badgeColor.withValues(alpha: 0.4), width: 0.8),
-                              ),
-                              child: Text(
-                                badge,
-                                style: TextStyle(
-                                  color: badgeColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 8,
+                    // Middle Details Block
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  event.title,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: badgeColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: badgeColor.withValues(alpha: 0.4), width: 0.8),
+                                ),
+                                child: Text(
+                                  badge,
+                                  style: TextStyle(
+                                    color: badgeColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatEventTime(event.dateTime),
+                            style: const TextStyle(
+                              color: Colors.white38,
+                              fontSize: 12,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatEventTime(event.dateTime),
-                          style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 12,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${event.attendeeUids.length} going',
-                          style: const TextStyle(
-                            color: Colors.white30,
-                            fontSize: 11,
+                          const SizedBox(height: 4),
+                          Text(
+                            '${event.attendeeUids.length} going',
+                            style: const TextStyle(
+                              color: Colors.white30,
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
+                    const SizedBox(width: 8),
 
-                  // RSVP Interactive Checkbox
-                  IconButton(
-                    icon: Icon(
-                      isGoing ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
-                      color: isGoing ? AppColors.primaryPurple : Colors.white38,
-                      size: 26,
+                    // RSVP Interactive Checkbox
+                    IconButton(
+                      icon: Icon(
+                        isGoing ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
+                        color: isGoing ? AppColors.primaryPurple : Colors.white38,
+                        size: 26,
+                      ),
+                      onPressed: () {
+                        if (isGoing) {
+                          _eventService.cancelRsvp(event.id, _currentUserId);
+                        } else {
+                          _eventService.rsvpToEvent(event.id, _currentUserId);
+                        }
+                      },
                     ),
-                    onPressed: () {
-                      if (isGoing) {
-                        _eventService.cancelRsvp(event.id, _currentUserId);
-                      } else {
-                        _eventService.rsvpToEvent(event.id, _currentUserId);
-                      }
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
