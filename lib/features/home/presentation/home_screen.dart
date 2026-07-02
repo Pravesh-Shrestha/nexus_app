@@ -9,6 +9,13 @@ import 'package:nexus_app/features/home/presentation/notifications_screen.dart';
 import 'package:nexus_app/features/friends/presentation/find_ally_screen.dart';
 import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/friends/presentation/view_friend_screen.dart';
+import 'package:nexus_app/features/community/data/community_model.dart';
+import 'package:nexus_app/features/community/data/community_service.dart';
+import 'package:nexus_app/features/event/data/event_model.dart';
+import 'package:nexus_app/features/event/data/event_service.dart';
+import 'package:nexus_app/features/explore/presentation/community_details_screen.dart';
+import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
+import 'package:nexus_app/features/home/presentation/main_layout.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,11 +27,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final AuthService _authService = AuthService();
   final FriendsService _friendsService = FriendsService();
+  final CommunityService _communityService = CommunityService();
+  final EventService _eventService = EventService();
   
   UserModel? _userModel;
   List<UserModel> _friends = [];
   List<UserModel> _recommended = [];
   bool _isLoading = true;
+  String _currentUserId = '';
 
   @override
   void initState() {
@@ -35,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadHomeData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      _currentUserId = user.uid;
       try {
         final data = await _authService.getUserData(user.uid);
         final friendsList = await _friendsService.getFriendsProfiles(user.uid);
@@ -155,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
+                                    decoration: const BoxDecoration(
                                       color: AppColors.surfaceHighlight,
                                       shape: BoxShape.circle,
                                     ),
@@ -309,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       const SizedBox(height: 24),
 
-                      // Recommended Players Section (only shown when there are recommendations)
+                      // Recommended Players Section
                       if (_recommended.isNotEmpty) ...[
                         _buildSectionHeader(
                           'Recommended Players',
@@ -352,107 +363,190 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 32),
                       ],
 
-                      // Trending Communities
-                      _buildSectionHeader('Trending Communities', 'Explore All'),
+                      // Trending Communities Section
+                      _buildSectionHeader(
+                        'Trending Communities',
+                        'Explore All',
+                        onTapAction: () {
+                          TabNavigationController.exploreEventsTab.value = false;
+                          TabNavigationController.activeTab.value = 1;
+                        },
+                      ),
                       const SizedBox(height: 16),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-                        child: Column(
-                          children: [
-                            _buildCommunityCard(
-                              'Valorant Tactics',
-                              'Strategies, lineups, and...',
-                              '12.4k Active',
-                              'HOT',
-                              AppColors.primaryCyan,
-                              'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=200&auto=format&fit=crop',
-                            ),
-                            const SizedBox(height: 16),
-                            _buildCommunityCard(
-                              'Elite Setups',
-                              'Showcase your battle station',
-                              '8.1k Active',
-                              'GLOBAL',
-                              AppColors.primaryPurple,
-                              'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=200&auto=format&fit=crop',
-                            ),
-                          ],
+                        child: StreamBuilder<List<CommunityModel>>(
+                          stream: _communityService.getCommunities(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple));
+                            }
+                            final list = snapshot.data ?? [];
+                            if (list.isEmpty) {
+                              return const Center(
+                                child: Text('No communities found.', style: TextStyle(color: Colors.white38, fontSize: 13)),
+                              );
+                            }
+                            // Sort by membership count descending to show "trending"
+                            final sorted = List<CommunityModel>.from(list)
+                              ..sort((a, b) => b.memberUids.length.compareTo(a.memberUids.length));
+                            final trending = sorted.take(2).toList();
+
+                            return Column(
+                              children: trending.map((community) {
+                                final isJoined = community.memberUids.contains(_currentUserId);
+                                final badge = community.memberUids.length >= 3 ? 'HOT' : 'GLOBAL';
+                                final badgeColor = community.memberUids.length >= 3 ? AppColors.statusOnline : AppColors.primaryPurple;
+                                final imgUrl = community.imageUrl.isNotEmpty
+                                    ? community.imageUrl
+                                    : 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=200&auto=format&fit=crop';
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _buildCommunityCard(
+                                    community: community,
+                                    isJoined: isJoined,
+                                    badge: badge,
+                                    badgeColor: badgeColor,
+                                    imageUrl: imgUrl,
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
                         ),
                       ),
                       const SizedBox(height: 32),
 
-                      // Upcoming Events
-                      _buildSectionHeader('Upcoming Events', 'View Calendar'),
+                      // Upcoming Events Section
+                      _buildSectionHeader(
+                        'Upcoming Events',
+                        'View Calendar',
+                        onTapAction: () {
+                          TabNavigationController.exploreEventsTab.value = true;
+                          TabNavigationController.activeTab.value = 1;
+                        },
+                      ),
                       const SizedBox(height: 16),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
-                        child: Container(
-                          height: 180,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(AppSizes.r24),
-                            image: const DecorationImage(
-                              image: NetworkImage('https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop'),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(AppSizes.r24),
-                              gradient: LinearGradient(
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                                colors: [
-                                  AppColors.secondaryPurple.withValues(alpha: 0.9),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                            padding: const EdgeInsets.all(AppSizes.p20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryPurple.withValues(alpha: 0.8),
-                                        borderRadius: BorderRadius.circular(AppSizes.r16),
-                                      ),
-                                      child: const Text(
-                                        'LIVE IN 2H',
-                                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.surfaceHighlight.withValues(alpha: 0.8),
-                                        borderRadius: BorderRadius.circular(AppSizes.r16),
-                                        border: Border.all(color: Colors.white24),
-                                      ),
-                                      child: const Text(
-                                        'Valorant Champions',
-                                        style: TextStyle(color: Colors.white, fontSize: 10),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'Grand Finals',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
+                        child: StreamBuilder<List<EventModel>>(
+                          stream: _eventService.getEvents(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple));
+                            }
+                            final list = snapshot.data ?? [];
+                            // Filter for upcoming events
+                            final upcoming = list.where((e) => e.dateTime.isAfter(DateTime.now())).toList();
+
+                            if (upcoming.isEmpty) {
+                              return const Center(
+                                child: Text('No upcoming events.', style: TextStyle(color: Colors.white38, fontSize: 13)),
+                              );
+                            }
+                            
+                            // Render the single closest upcoming event
+                            final event = upcoming.first;
+                            final diff = event.dateTime.difference(DateTime.now());
+                            String liveBadge = 'LIVE IN ${diff.inHours}H';
+                            if (diff.inHours == 0) {
+                              liveBadge = 'LIVE IN ${diff.inMinutes}M';
+                            } else if (diff.inDays > 0) {
+                              liveBadge = 'IN ${diff.inDays} DAYS';
+                            }
+
+                            // Host Community name parse
+                            String hostCommunity = 'Valorant Tactics';
+                            if (event.description.contains('Hosted by community:')) {
+                              final parts = event.description.split('Hosted by community:');
+                              if (parts.length > 1) {
+                                final subParts = parts[1].split('. Game:');
+                                if (subParts.isNotEmpty) {
+                                  hostCommunity = subParts[0].trim();
+                                }
+                              }
+                            }
+
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EventDetailsScreen(event: event, currentUserId: _currentUserId),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                height: 180,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(AppSizes.r24),
+                                  image: const DecorationImage(
+                                    image: NetworkImage('https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop'),
+                                    fit: BoxFit.cover,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(AppSizes.r24),
+                                    gradient: LinearGradient(
+                                      begin: Alignment.bottomCenter,
+                                      end: Alignment.topCenter,
+                                      colors: [
+                                        AppColors.secondaryPurple.withValues(alpha: 0.9),
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                  ),
+                                  padding: const EdgeInsets.all(AppSizes.p20),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primaryPurple.withValues(alpha: 0.8),
+                                              borderRadius: BorderRadius.circular(AppSizes.r16),
+                                            ),
+                                            child: Text(
+                                              liveBadge,
+                                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.surfaceHighlight.withValues(alpha: 0.8),
+                                              borderRadius: BorderRadius.circular(AppSizes.r16),
+                                              border: Border.all(color: Colors.white24),
+                                            ),
+                                            child: Text(
+                                              hostCommunity,
+                                              style: const TextStyle(color: Colors.white, fontSize: 10),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        event.title,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -552,90 +646,130 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCommunityCard(String title, String subtitle, String activeCount, String badge, Color badgeColor, String imageUrl) {
-    return Container(
-      padding: const EdgeInsets.all(AppSizes.p12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppSizes.r16),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        children: [
-          // Image
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppSizes.r16),
-              image: DecorationImage(
-                image: NetworkImage(imageUrl),
-                fit: BoxFit.cover,
+  Widget _buildCommunityCard({
+    required CommunityModel community,
+    required bool isJoined,
+    required String badge,
+    required Color badgeColor,
+    required String imageUrl,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CommunityDetailsScreen(community: community),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(AppSizes.p12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppSizes.r16),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Row(
+          children: [
+            // Image
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppSizes.r16),
+                image: DecorationImage(
+                  image: NetworkImage(imageUrl),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: badgeColor.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
+            const SizedBox(width: 16),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        community.name,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      child: Text(
-                        badge,
-                        style: TextStyle(color: badgeColor, fontSize: 8, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.people, color: AppColors.textMuted, size: 12),
-                        const SizedBox(width: 4),
-                        Text(
-                          activeCount,
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryPurple,
-                        borderRadius: BorderRadius.circular(AppSizes.r16),
+                        child: Text(
+                          badge,
+                          style: TextStyle(color: badgeColor, fontSize: 8, fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      child: const Text(
-                        'Join Comm',
-                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    community.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.people, color: AppColors.textMuted, size: 12),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${community.memberUids.length} Active',
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      GestureDetector(
+                        onTap: () {
+                          if (community.creatorId == _currentUserId) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('As the creator, you cannot leave this community.'), behavior: SnackBarBehavior.floating),
+                            );
+                            return;
+                          }
+                          if (isJoined) {
+                            _communityService.leaveCommunity(community.id, _currentUserId);
+                          } else {
+                            _communityService.joinCommunity(community.id, _currentUserId);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: community.creatorId == _currentUserId
+                                ? AppColors.primaryPurple.withValues(alpha: 0.2)
+                                : (isJoined ? AppColors.surfaceHighlight : AppColors.primaryPurple),
+                            borderRadius: BorderRadius.circular(AppSizes.r16),
+                            border: community.creatorId == _currentUserId
+                                ? Border.all(color: AppColors.primaryPurple)
+                                : null,
+                          ),
+                          child: Text(
+                            community.creatorId == _currentUserId
+                                ? 'Creator'
+                                : (isJoined ? 'Leave Comm' : 'Join Comm'),
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

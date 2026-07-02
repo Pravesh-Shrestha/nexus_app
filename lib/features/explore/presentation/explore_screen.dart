@@ -10,6 +10,7 @@ import 'package:nexus_app/features/explore/presentation/create_community_screen.
 import 'package:nexus_app/features/explore/presentation/create_event_screen.dart';
 import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
 import 'package:nexus_app/features/explore/presentation/community_details_screen.dart';
+import 'package:nexus_app/features/home/presentation/main_layout.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -26,6 +27,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool _isEventsTab = false; // False = Communities, True = Events
   String _searchQuery = '';
   String _selectedTag = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _isEventsTab = TabNavigationController.exploreEventsTab.value;
+    TabNavigationController.exploreEventsTab.addListener(_onExploreTabChanged);
+  }
+
+  @override
+  void dispose() {
+    TabNavigationController.exploreEventsTab.removeListener(_onExploreTabChanged);
+    super.dispose();
+  }
+
+  void _onExploreTabChanged() {
+    if (mounted) {
+      setState(() {
+        _isEventsTab = TabNavigationController.exploreEventsTab.value;
+      });
+    }
+  }
 
   final List<String> _tags = ['#LFG', '#COMPETITIVE', '#RPG', '#SQUAD'];
 
