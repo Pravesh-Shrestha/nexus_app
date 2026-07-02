@@ -6,6 +6,7 @@ import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/chat/data/chat_service.dart';
 import 'package:nexus_app/features/chat/presentation/chat_screen.dart';
+import 'package:nexus_app/features/friends/presentation/find_ally_radar_screen.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -143,8 +144,14 @@ class _InboxScreenState extends State<InboxScreen> {
                         ],
                       ),
                       IconButton(
-                        icon: const Icon(Icons.menu, color: Colors.white, size: 24),
-                        onPressed: () {},
+                        icon: const Icon(Icons.explore_outlined, color: Colors.white, size: 24),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const FindAllyRadarScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

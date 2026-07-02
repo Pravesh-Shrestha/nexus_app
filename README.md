@@ -38,6 +38,11 @@ Nexus is a Flutter-based mobile application designed for gamers. It provides a p
   - **Tab Navigation Controller**: A decoupled programmatic event controller that synchronizes navigation index switches and sub-tab selection (Communities vs. Events) seamlessly.
 - **Clipboard Sharing Integration**:
   - All share buttons on Communities, Events, and Posts copy active deep-link URLs directly to the system clipboard (supported with floating SnackBars).
+- **Tactical GPS Radar Ally Finder**:
+  - **Animated Sweep Radar HUD**: Implements a high-fidelity custom-painted radar scanner canvas showing concentric grids, target vectors, and rotating sweep lines.
+  - **Dynamic Interactive Blips**: Places active friend nodes (avatars) on the scanner based on actual coordinate offsets, falling back to deterministic mock coordinates to ensure the grid remains populated.
+  - **GPS Calibration**: Allows users to post their own live simulated GPS coordinates to Firestore via a tactical sync action.
+  - **Bottom Carousel Detail Card**: Selecting a blip displays detailed ally cards showing distance, roles, custom gaming tags, profile view navigation, and direct chat triggers.
 
 ## Getting Started
 
