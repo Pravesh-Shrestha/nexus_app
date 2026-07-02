@@ -1081,90 +1081,124 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
                   letterSpacing: 1.5,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              // Content text field
+              // Content text field (Minimal Styling)
               TextFormField(
                 controller: _contentController,
-                maxLines: 4,
+                maxLines: 3,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'What\'s on your mind?',
-                  hintStyle: const TextStyle(color: Colors.white24),
-                  fillColor: const Color(0xFF13141B),
-                  filled: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.all(16),
+                  hintStyle: const TextStyle(color: Colors.white30, fontSize: 14),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                  focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.primaryPurple)),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),
                 validator: (val) => val == null || val.trim().isEmpty ? 'Please type some content' : null,
               ),
               const SizedBox(height: 16),
 
-              // Tags text field
+              // Tags text field (Minimal Styling)
               TextFormField(
                 controller: _tagsController,
                 style: const TextStyle(color: Colors.white, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'Tags (comma separated, e.g. competitive, ace)',
-                  hintStyle: const TextStyle(color: Colors.white24),
-                  fillColor: const Color(0xFF13141B),
-                  filled: true,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.all(16),
+                  hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                  focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.primaryPurple)),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // Image attachment upload
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF13141B),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white10, width: 1),
-                  ),
-                  child: Center(
-                    child: _isUploadingImage
-                        ? const CircularProgressIndicator(color: AppColors.primaryPurple)
-                        : _uploadedImageUrl.isNotEmpty
-                            ? const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.check_circle, color: AppColors.successGreen, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Image Attached', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                                ],
-                              )
-                            : const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add_photo_alternate_outlined, color: Colors.grey, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Attach Image', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                                ],
-                              ),
-                  ),
+              // Closeable Image Preview
+              if (_uploadedImageUrl.isNotEmpty) ...[
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        _uploadedImageUrl,
+                        height: 140,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _uploadedImageUrl = '';
+                            _imageFile = null;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 16),
+              ],
 
-              // Publish button
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C8CFF),
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              // Minimal Image Attachment and Publish Actions Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.add_photo_alternate_outlined,
+                          color: _uploadedImageUrl.isNotEmpty ? AppColors.successGreen : Colors.white60,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _isUploadingImage
+                              ? 'Uploading...'
+                              : (_uploadedImageUrl.isNotEmpty ? 'Change Image' : 'Add Image'),
+                          style: TextStyle(
+                            color: _uploadedImageUrl.isNotEmpty ? AppColors.successGreen : Colors.white60,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  onPressed: _isPublishing ? null : _submit,
-                  child: _isPublishing
-                      ? const CircularProgressIndicator(color: Colors.black)
-                      : const Text('Publish Post', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                ),
+                  SizedBox(
+                    height: 38,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6C8CFF),
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        elevation: 0,
+                      ),
+                      onPressed: _isPublishing ? null : _submit,
+                      child: _isPublishing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                            )
+                          : const Text('Publish', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

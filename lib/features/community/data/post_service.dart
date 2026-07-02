@@ -10,12 +10,14 @@ class PostService {
     return _firestore
         .collection('posts')
         .where('communityId', isEqualTo: communityId)
-        .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
+          final list = snapshot.docs
               .map((doc) => PostModel.fromJson(doc.data()))
               .toList();
+          // Sort in memory by timestamp descending (newest on top)
+          list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          return list;
         });
   }
 
