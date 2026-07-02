@@ -3,6 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
@@ -10,6 +13,9 @@ import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/friends/presentation/view_friend_screen.dart';
 import 'package:nexus_app/features/chat/data/chat_service.dart';
 import 'package:nexus_app/features/chat/presentation/chat_screen.dart';
+import 'package:nexus_app/features/event/data/event_model.dart';
+import 'package:nexus_app/features/event/data/event_service.dart';
+import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
 
 class FindAllyRadarScreen extends StatefulWidget {
   const FindAllyRadarScreen({super.key});
@@ -18,20 +24,25 @@ class FindAllyRadarScreen extends StatefulWidget {
   State<FindAllyRadarScreen> createState() => _FindAllyRadarScreenState();
 }
 
-class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
-    with SingleTickerProviderStateMixin {
+class _FindAllyRadarScreenState extends State<FindAllyRadarScreen> {
   final FriendsService _friendsService = FriendsService();
   final ChatService _chatService = ChatService();
+  final EventService _eventService = EventService();
   final String _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  final MapController _mapController = MapController();
 
-  late AnimationController _radarController;
   List<UserModel> _friends = [];
+  List<EventModel> _eventsList = [];
   UserModel? _currentUserModel;
   bool _isLoading = true;
   bool _isEventsTab = false; // False = Friends, True = Events
 
   UserModel? _selectedFriend;
+  EventModel? _selectedEvent;
   bool _gpsUpdating = false;
+
+  double _userLat = 27.7172;
+  double _userLng = 85.3240;
 
   // Custom mock tags & roles for tactical display
   final List<String> _tacticalRoles = [
@@ -52,18 +63,9 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
   @override
   void initState() {
     super.initState();
-    _radarController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
-
-    _loadData();
-  }
-
-  @override
-  void dispose() {
-    _radarController.dispose();
-    super.dispose();
+    _loadData().then((_) {
+      _initAndRequestLocation();
+    });
   }
 
   Future<void> _loadData() async {
@@ -74,12 +76,20 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
       UserModel? currentUser;
       if (doc.exists && doc.data() != null) {
         currentUser = UserModel.fromJson(doc.data()!);
+        if (currentUser.latitude != null && currentUser.longitude != null) {
+          _userLat = currentUser.latitude!;
+          _userLng = currentUser.longitude!;
+        }
       }
+
+      // Fetch upcoming events
+      final events = await _eventService.getEvents().first;
 
       if (mounted) {
         setState(() {
           _friends = friendsList;
           _currentUserModel = currentUser;
+          _eventsList = events;
           _isLoading = false;
         });
       }
@@ -90,88 +100,57 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
     }
   }
 
-  // Simulate updating current user's location
-  Future<void> _requestAndPostLocation() async {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.gps_fixed, color: AppColors.primaryCyan),
-            SizedBox(width: 10),
-            Text('Tac-GPS Sync', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text(
-          'Allow Nexus to calibrate your GPS locator coordinates and publish them to regional ally grids?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryCyan,
-              foregroundColor: Colors.black,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-              _performLocationUpdate();
-            },
-            child: const Text('Calibrate'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _performLocationUpdate() async {
+  Future<void> _initAndRequestLocation() async {
     setState(() => _gpsUpdating = true);
-    
-    // Simulate slight delay for GPS signal lock
-    await Future.delayed(const Duration(milliseconds: 1200));
-
-    // Simulated coordinates (Kathmandu regional server center with slight random offsets)
-    final math.Random random = math.Random();
-    final double simulatedLat = 27.7172 + (random.nextDouble() - 0.5) * 0.005;
-    final double simulatedLng = 85.3240 + (random.nextDouble() - 0.5) * 0.005;
-
     try {
-      await FirebaseFirestore.instance.collection('users').doc(_currentUserId).update({
-        'latitude': simulatedLat,
-        'longitude': simulatedLng,
-        'location': 'Kathmandu Grid Sector',
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw 'Location services disabled.';
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw 'Location permissions denied.';
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw 'Location permissions permanently denied.';
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      
+      if (_currentUserId.isNotEmpty) {
+        await FirebaseFirestore.instance.collection('users').doc(_currentUserId).update({
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'location': 'User GPS Sector',
+        });
+      }
+
+      setState(() {
+        _userLat = position.latitude;
+        _userLng = position.longitude;
+        _gpsUpdating = false;
       });
 
+      _mapController.move(LatLng(_userLat, _userLng), 14.0);
       await _loadData();
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tactical grid successfully synchronized! Location updated.'),
-            backgroundColor: AppColors.successGreen,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
     } catch (e) {
+      setState(() => _gpsUpdating = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('GPS Sync Failed: $e'),
-            backgroundColor: AppColors.errorRed,
+            content: Text('GPS: $e. Simulating regional server center.'),
+            backgroundColor: AppColors.primaryPurple,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() => _gpsUpdating = false);
-      }
+      _mapController.move(LatLng(_userLat, _userLng), 14.0);
+      await _loadData();
     }
   }
 
@@ -244,27 +223,200 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-    final double screenHeight = MediaQuery.of(context).size.height;
     
     // User GPS reference center coordinates
-    final double userLat = _currentUserModel?.latitude ?? 27.7172;
-    final double userLng = _currentUserModel?.longitude ?? 85.3240;
+    final LatLng centerLatLng = LatLng(_userLat, _userLng);
+
+    // Build markers
+    final List<Marker> mapMarkers = [];
+
+    // 1. Current user (You)
+    mapMarkers.add(
+      Marker(
+        point: centerLatLng,
+        width: 60,
+        height: 60,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primaryCyan, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryCyan.withValues(alpha: 0.4),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+            _buildAvatarImage(
+              _currentUserModel?.profileImageUrl ?? '',
+              _currentUserModel?.username ?? 'You',
+              size: 44,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // 2. Friends or Events markers
+    if (!_isEventsTab) {
+      for (final friend in _friends) {
+        double fLat = _userLat;
+        double fLng = _userLng;
+        if (friend.latitude != null && friend.longitude != null) {
+          fLat = friend.latitude!;
+          fLng = friend.longitude!;
+        } else {
+          // Determinstic mock offsets nearby user
+          fLat = _userLat + ((friend.uid.hashCode % 100) - 50) * 0.00018;
+          fLng = _userLng + ((friend.uid.hashCode % 80) - 40) * 0.00022;
+        }
+
+        final isSelected = _selectedFriend?.uid == friend.uid;
+
+        mapMarkers.add(
+          Marker(
+            point: LatLng(fLat, fLng),
+            width: 54,
+            height: 54,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedFriend = friend;
+                  _selectedEvent = null;
+                });
+              },
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    width: isSelected ? 48 : 40,
+                    height: isSelected ? 48 : 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? AppColors.primaryCyan : AppColors.primaryPurple,
+                        width: isSelected ? 2.5 : 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isSelected ? AppColors.primaryCyan : AppColors.primaryPurple)
+                              .withValues(alpha: isSelected ? 0.6 : 0.2),
+                          blurRadius: isSelected ? 12 : 6,
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildAvatarImage(friend.profileImageUrl, friend.username, size: isSelected ? 40 : 34),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    } else {
+      // Events Layer
+      for (final ev in _eventsList) {
+        double eLat = _userLat;
+        double eLng = _userLng;
+        if (ev.latitude != null && ev.longitude != null) {
+          eLat = ev.latitude!;
+          eLng = ev.longitude!;
+        } else {
+          // Determinstic mock offsets nearby user
+          eLat = _userLat + ((ev.id.hashCode % 100) - 50) * 0.00015;
+          eLng = _userLng + ((ev.id.hashCode % 80) - 40) * 0.00018;
+        }
+
+        final isSelected = _selectedEvent?.id == ev.id;
+
+        mapMarkers.add(
+          Marker(
+            point: LatLng(eLat, eLng),
+            width: 50,
+            height: 50,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedEvent = ev;
+                  _selectedFriend = null;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                width: isSelected ? 46 : 38,
+                height: isSelected ? 46 : 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF16171D),
+                  border: Border.all(
+                    color: isSelected ? AppColors.primaryCyan : AppColors.successGreen,
+                    width: isSelected ? 2.5 : 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (isSelected ? AppColors.primaryCyan : AppColors.successGreen)
+                          .withValues(alpha: isSelected ? 0.6 : 0.3),
+                      blurRadius: isSelected ? 12 : 6,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.emoji_events,
+                    color: isSelected ? AppColors.primaryCyan : AppColors.successGreen,
+                    size: isSelected ? 22 : 18,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primaryCyan),
+        ),
+      );
+    }
 
     return Scaffold(
-      backgroundColor: Colors.black, // Midnight Tactical Black
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ── Tactical Canvas Map Background ────────────────────────────────
+          // ── FlutterMap Dark Theme Streets Layer ────────────────────────────
           Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _radarController,
-              builder: (context, child) {
-                return CustomPaint(
-                  painter: RadarPainter(
-                    sweepAngle: _radarController.value * 2 * math.pi,
-                  ),
-                );
-              },
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: centerLatLng,
+                initialZoom: 14.0,
+                onTap: (tapPosition, point) {
+                  setState(() {
+                    _selectedFriend = null;
+                    _selectedEvent = null;
+                  });
+                },
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                  userAgentPackageName: 'com.nexus.nexusapp',
+                  subdomains: const ['a', 'b', 'c', 'd'],
+                ),
+                MarkerLayer(markers: mapMarkers),
+              ],
             ),
           ),
 
@@ -303,7 +455,11 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             GestureDetector(
-                              onTap: () => setState(() => _isEventsTab = false),
+                              onTap: () => setState(() {
+                                _isEventsTab = false;
+                                _selectedFriend = null;
+                                _selectedEvent = null;
+                              }),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                                 decoration: BoxDecoration(
@@ -321,7 +477,11 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
                               ),
                             ),
                             GestureDetector(
-                              onTap: () => setState(() => _isEventsTab = true),
+                              onTap: () => setState(() {
+                                _isEventsTab = true;
+                                _selectedFriend = null;
+                                _selectedEvent = null;
+                              }),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                                 decoration: BoxDecoration(
@@ -342,12 +502,12 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
                         ),
                       ),
 
-                      const SizedBox(width: 40), // Spacer balancing the back button
+                      const SizedBox(width: 40),
                     ],
                   ),
                 ),
 
-                // Find Your Ally Informational Card
+                // Map HUD Banner
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
                   child: Container(
@@ -361,13 +521,13 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Find Your Ally',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        Text(
+                          _isEventsTab ? 'Tactical Events' : 'Find Your Ally',
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _gpsUpdating ? 'Syncing coordinates...' : 'Connecting to regional servers...',
+                          _gpsUpdating ? 'Calibrating GPS...' : 'GPS Lock Engaged',
                           style: const TextStyle(color: Colors.white38, fontSize: 11),
                         ),
                       ],
@@ -378,212 +538,55 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
             ),
           ),
 
-          // ── GPS Coordinates Blips Layer ──────────────────────────────────
-          if (!_isLoading)
-            ..._friends.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final friend = entry.value;
-
-              // Extract or mock offsets
-              double latOffset = 0.0;
-              double lngOffset = 0.0;
-              if (friend.latitude != null && friend.longitude != null) {
-                latOffset = friend.latitude! - userLat;
-                lngOffset = friend.longitude! - userLng;
-              } else {
-                // Generate a deterministic mock offset based on UID hash
-                latOffset = ((friend.uid.hashCode % 100) - 50) * 0.00008;
-                lngOffset = ((friend.uid.hashCode % 80) - 40) * 0.0001;
-              }
-
-              // Map coordinates to pixel offset relative to center of radar (screenCenter)
-              final double centerX = screenWidth / 2;
-              final double centerY = screenHeight / 2 - 40;
-
-              // Coordinates multipliers to fit screen limits nicely
-              final double xPos = centerX + (lngOffset * 900000);
-              final double yPos = centerY - (latOffset * 900000);
-
-              // Skip rendering if offset falls outside visible area
-              if (xPos < 20 || xPos > screenWidth - 20 || yPos < 120 || yPos > screenHeight - 180) {
-                return const SizedBox.shrink();
-              }
-
-              final isSelected = _selectedFriend?.uid == friend.uid;
-
-              return Positioned(
-                left: xPos - 20,
-                top: yPos - 20,
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedFriend = friend;
-                    });
-                  },
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Active Glow Circle
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: isSelected ? 48 : 40,
-                        height: isSelected ? 48 : 40,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected ? AppColors.primaryCyan : AppColors.primaryPurple,
-                            width: isSelected ? 2.5 : 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (isSelected ? AppColors.primaryCyan : AppColors.primaryPurple)
-                                  .withValues(alpha: isSelected ? 0.6 : 0.2),
-                              blurRadius: isSelected ? 12 : 6,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Profile Pic Node
-                      _buildAvatarImage(friend.profileImageUrl, friend.username, size: isSelected ? 40 : 34),
-
-                      // Optional Live Status indicator matching mockup
-                      if (idx == 0)
-                        Positioned(
-                          bottom: -4,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryPurple,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'LIVE',
-                              style: TextStyle(color: Colors.white, fontSize: 6, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-
-          // ── Central User Pulsing Pulse ──────────────────────────────────
+          // ── Bottom-Right My Location Centering Button ──────────────────────
           Positioned(
-            left: screenWidth / 2 - 24,
-            top: screenHeight / 2 - 64,
-            child: Column(
-              children: [
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Target Pulsing Rings
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primaryCyan, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primaryCyan.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                    ),
-                    _buildAvatarImage(
-                      _currentUserModel?.profileImageUrl ?? '',
-                      _currentUserModel?.username ?? 'You',
-                      size: 40,
-                    ),
+            right: 20,
+            bottom: (_selectedFriend != null || _selectedEvent != null) ? 190 : 30,
+            child: GestureDetector(
+              onTap: _initAndRequestLocation,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF13141B),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black54, blurRadius: 10, offset: Offset(0, 4)),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.primaryCyan.withValues(alpha: 0.3)),
-                  ),
-                  child: const Text(
-                    'Searching for Allies...',
-                    style: TextStyle(color: AppColors.primaryCyan, fontSize: 8, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
+                child: const Icon(Icons.my_location, color: AppColors.primaryCyan, size: 24),
+              ),
             ),
           ),
 
-          // ── Vertical Toolbar Panel (Right side) ─────────────────────────
-          Positioned(
-            right: 16,
-            top: screenHeight * 0.24,
-            child: Column(
-              children: [
-                // Filter Button
-                _buildToolbarButton(Icons.filter_list),
-                const SizedBox(height: 12),
-                // Groups Button
-                _buildToolbarButton(Icons.people_outline),
-                const SizedBox(height: 12),
-                // Calendar Button
-                _buildToolbarButton(Icons.calendar_today_outlined),
-                const SizedBox(height: 12),
-                // GPS Target/Update Location Button
-                _buildToolbarButton(
-                  Icons.my_location,
-                  iconColor: AppColors.primaryCyan,
-                  onTap: _requestAndPostLocation,
-                ),
-              ],
-            ),
-          ),
-
-          // ── Bottom Detail Overlay Card (Dynamic Allies PageView) ────────
+          // ── Bottom Detail Overlay Card (Dynamic Allies or Events PageView) ─
           if (_selectedFriend != null)
             Positioned(
               bottom: 24,
               left: 20,
               right: 20,
               child: _buildAllyDetailCard(_selectedFriend!),
+            )
+          else if (_selectedEvent != null)
+            Positioned(
+              bottom: 24,
+              left: 20,
+              right: 20,
+              child: _buildEventDetailCard(_selectedEvent!),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildToolbarButton(IconData icon, {Color iconColor = Colors.white, VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap ?? () {},
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: const Color(0xFF13141B).withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: Icon(icon, color: iconColor, size: 18),
-      ),
-    );
-  }
-
   Widget _buildAllyDetailCard(UserModel ally) {
-    // Generate deterministic index metrics for nice visual display
     final int idx = ally.uid.hashCode;
     final String role = _tacticalRoles[idx % _tacticalRoles.length];
     final List<String> tags = _tacticalTags[idx % _tacticalTags.length];
     
-    // Distance display logic
-    final double userLat = _currentUserModel?.latitude ?? 27.7172;
-    final double userLng = _currentUserModel?.longitude ?? 85.3240;
     final int distanceMeters = ally.latitude != null && ally.longitude != null
-        ? _calculateDistance(userLat, userLng, ally.latitude!, ally.longitude!)
+        ? _calculateDistance(_userLat, _userLng, ally.latitude!, ally.longitude!)
         : (100 + (ally.uid.hashCode % 1200));
 
     return Container(
@@ -602,18 +605,13 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar
               Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                ),
+                decoration: const BoxDecoration(shape: BoxShape.circle),
                 child: _buildAvatarImage(ally.profileImageUrl, ally.username, size: 48),
               ),
               const SizedBox(width: 16),
-
-              // Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,8 +626,6 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
                       style: const TextStyle(color: AppColors.primaryCyan, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-
-                    // Tags
                     Wrap(
                       spacing: 6,
                       runSpacing: 4,
@@ -650,8 +646,6 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
                   ],
                 ),
               ),
-
-              // Close "X" Button
               GestureDetector(
                 onTap: () {
                   setState(() {
@@ -663,11 +657,8 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
             ],
           ),
           const SizedBox(height: 16),
-
-          // Action Buttons
           Row(
             children: [
-              // View Profile Button
               Expanded(
                 child: SizedBox(
                   height: 44,
@@ -691,8 +682,6 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
                 ),
               ),
               const SizedBox(width: 12),
-
-              // Chat Action Button
               GestureDetector(
                 onTap: () => _startChatWithUser(ally),
                 child: Container(
@@ -711,122 +700,97 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen>
       ),
     );
   }
-}
 
-// Custom Painter drawing the sweeping futuristic tactical HUD Radar Map grid
-class RadarPainter extends CustomPainter {
-  final double sweepAngle;
+  Widget _buildEventDetailCard(EventModel event) {
+    final int distanceMeters = event.latitude != null && event.longitude != null
+        ? _calculateDistance(_userLat, _userLng, event.latitude!, event.longitude!)
+        : (200 + (event.id.hashCode % 1500));
 
-  RadarPainter({required this.sweepAngle});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double centerX = size.width / 2;
-    final double centerY = size.height / 2 - 40;
-    final double maxRadius = math.min(size.width, size.height) * 0.46;
-
-    final Paint linePaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.04)
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-
-    final Paint accentPaint = Paint()
-      ..color = AppColors.primaryCyan.withValues(alpha: 0.1)
-      ..strokeWidth = 1.0
-      ..style = PaintingStyle.stroke;
-
-    // Draw concentric circles
-    canvas.drawCircle(Offset(centerX, centerY), maxRadius * 0.25, linePaint);
-    canvas.drawCircle(Offset(centerX, centerY), maxRadius * 0.55, linePaint);
-    canvas.drawCircle(Offset(centerX, centerY), maxRadius * 0.85, linePaint);
-    canvas.drawCircle(Offset(centerX, centerY), maxRadius, accentPaint);
-
-    // Draw axis lines
-    canvas.drawLine(
-      Offset(centerX - maxRadius, centerY),
-      Offset(centerX + maxRadius, centerY),
-      linePaint,
-    );
-    canvas.drawLine(
-      Offset(centerX, centerY - maxRadius),
-      Offset(centerX, centerY + maxRadius),
-      linePaint,
-    );
-
-    // Draw angled sub-lines
-    final double angle45 = math.pi / 4;
-    canvas.drawLine(
-      Offset(centerX - maxRadius * math.cos(angle45), centerY - maxRadius * math.sin(angle45)),
-      Offset(centerX + maxRadius * math.cos(angle45), centerY + maxRadius * math.sin(angle45)),
-      linePaint,
-    );
-    canvas.drawLine(
-      Offset(centerX - maxRadius * math.cos(angle45), centerY + maxRadius * math.sin(angle45)),
-      Offset(centerX + maxRadius * math.cos(angle45), centerY - maxRadius * math.sin(angle45)),
-      linePaint,
-    );
-
-    // Draw futuristic HUD corner brackets
-    final Paint bracketPaint = Paint()
-      ..color = AppColors.primaryCyan.withValues(alpha: 0.3)
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-
-    const double bracketOffset = 24.0;
-    const double bracketLen = 16.0;
-
-    // Top-Left bracket
-    canvas.drawPath(
-      Path()
-        ..moveTo(bracketOffset, bracketOffset + bracketLen)
-        ..lineTo(bracketOffset, bracketOffset)
-        ..lineTo(bracketOffset + bracketLen, bracketOffset),
-      bracketPaint,
-    );
-    // Top-Right bracket
-    canvas.drawPath(
-      Path()
-        ..moveTo(size.width - bracketOffset, bracketOffset + bracketLen)
-        ..lineTo(size.width - bracketOffset, bracketOffset)
-        ..lineTo(size.width - bracketOffset - bracketLen, bracketOffset),
-      bracketPaint,
-    );
-    // Bottom-Left bracket
-    canvas.drawPath(
-      Path()
-        ..moveTo(bracketOffset, size.height - bracketOffset - bracketLen)
-        ..lineTo(bracketOffset, size.height - bracketOffset)
-        ..lineTo(bracketOffset + bracketLen, size.height - bracketOffset),
-      bracketPaint,
-    );
-    // Bottom-Right bracket
-    canvas.drawPath(
-      Path()
-        ..moveTo(size.width - bracketOffset, size.height - bracketOffset - bracketLen)
-        ..lineTo(size.width - bracketOffset, size.height - bracketOffset)
-        ..lineTo(size.width - bracketOffset - bracketLen, size.height - bracketOffset),
-      bracketPaint,
-    );
-
-    // Draw the active scanning sweep line gradient
-    final Paint sweepPaint = Paint()
-      ..shader = SweepGradient(
-        center: Alignment.center,
-        startAngle: 0.0,
-        endAngle: 2 * math.pi,
-        colors: [
-          AppColors.primaryCyan.withValues(alpha: 0.15),
-          Colors.transparent,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF13141B),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        boxShadow: const [
+          BoxShadow(color: Colors.black54, blurRadius: 16, offset: Offset(0, 8)),
         ],
-        transform: GradientRotation(sweepAngle),
-      ).createShader(Rect.fromCircle(center: Offset(centerX, centerY), radius: maxRadius))
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(Offset(centerX, centerY), maxRadius, sweepPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant RadarPainter oldDelegate) {
-    return oldDelegate.sweepAngle != sweepAngle;
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.successGreen.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.emoji_events, color: AppColors.successGreen, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.title,
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${event.location} • ${distanceMeters}M AWAY',
+                      style: const TextStyle(color: AppColors.successGreen, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      event.description,
+                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedEvent = null;
+                  });
+                },
+                child: const Icon(Icons.close, color: Colors.white60, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.successGreen,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EventDetailsScreen(event: event, currentUserId: _currentUserId),
+                  ),
+                );
+              },
+              child: const Text('View Event Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

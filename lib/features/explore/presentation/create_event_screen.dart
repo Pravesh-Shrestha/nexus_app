@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/event/data/event_service.dart';
 import 'package:nexus_app/features/community/data/community_service.dart';
@@ -53,14 +54,48 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
   Future<void> _simulateEventGpsPin() async {
     setState(() => _isPinningGps = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    final double simulatedLat = 27.7172 + (math.Random().nextDouble() - 0.5) * 0.005;
-    final double simulatedLng = 85.3240 + (math.Random().nextDouble() - 0.5) * 0.005;
-    setState(() {
-      _latitude = simulatedLat;
-      _longitude = simulatedLng;
-      _isPinningGps = false;
-    });
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw 'Location services are disabled.';
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw 'Location permissions are denied.';
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw 'Location permissions are permanently denied.';
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+        _isPinningGps = false;
+      });
+    } catch (e) {
+      setState(() => _isPinningGps = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('GPS Access: $e. Simulating regional grid offset.'),
+            backgroundColor: AppColors.primaryPurple,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      final double simulatedLat = 27.7172 + (math.Random().nextDouble() - 0.5) * 0.005;
+      final double simulatedLng = 85.3240 + (math.Random().nextDouble() - 0.5) * 0.005;
+      setState(() {
+        _latitude = simulatedLat;
+        _longitude = simulatedLng;
+      });
+    }
   }
 
   void _loadMyCommunities() {

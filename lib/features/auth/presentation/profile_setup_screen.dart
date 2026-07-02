@@ -1,9 +1,11 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:nexus_app/features/auth/presentation/setup_success_screen.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nexus_app/features/auth/presentation/setup_success_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final String fullName;
@@ -37,18 +39,52 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   Future<void> _calibrateGps() async {
     setState(() => _isCalibratingGps = true);
-    await Future.delayed(const Duration(milliseconds: 1000));
-    final math.Random random = math.Random();
-    // Simulate latitude/longitude around Kathmandu
-    final double simulatedLat = 27.7172 + (random.nextDouble() - 0.5) * 0.005;
-    final double simulatedLng = 85.3240 + (random.nextDouble() - 0.5) * 0.005;
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw 'Location services are disabled.';
+      }
 
-    setState(() {
-      _latitude = simulatedLat;
-      _longitude = simulatedLng;
-      _locationName = 'Sector ${random.nextInt(100) + 10} Grid';
-      _isCalibratingGps = false;
-    });
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw 'Location permissions are denied.';
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw 'Location permissions are permanently denied.';
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+        _locationName = 'User GPS Sector';
+        _isCalibratingGps = false;
+      });
+    } catch (e) {
+      setState(() => _isCalibratingGps = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('GPS Access: $e. Simulating regional grid offset.'),
+            backgroundColor: AppColors.primaryPurple,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      // Fallback
+      final math.Random random = math.Random();
+      final double simulatedLat = 27.7172 + (random.nextDouble() - 0.5) * 0.005;
+      final double simulatedLng = 85.3240 + (random.nextDouble() - 0.5) * 0.005;
+      setState(() {
+        _latitude = simulatedLat;
+        _longitude = simulatedLng;
+        _locationName = 'Sector Grid ${random.nextInt(90) + 10}';
+      });
+    }
   }
 
   Widget _buildSectionTitle(String title) {

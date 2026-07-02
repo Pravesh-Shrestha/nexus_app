@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
@@ -44,18 +45,51 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _calibrateGps() async {
     setState(() => _isCalibratingGps = true);
-    await Future.delayed(const Duration(milliseconds: 1000));
-    final math.Random random = math.Random();
-    // Simulate latitude/longitude around Kathmandu
-    final double simulatedLat = 27.7172 + (random.nextDouble() - 0.5) * 0.005;
-    final double simulatedLng = 85.3240 + (random.nextDouble() - 0.5) * 0.005;
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw 'Location services are disabled.';
+      }
 
-    setState(() {
-      _latitude = simulatedLat;
-      _longitude = simulatedLng;
-      _locationController.text = 'Sector ${random.nextInt(100) + 10} Grid';
-      _isCalibratingGps = false;
-    });
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw 'Location permissions are denied.';
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw 'Location permissions are permanently denied.';
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+        _locationController.text = 'User GPS Sector';
+        _isCalibratingGps = false;
+      });
+    } catch (e) {
+      setState(() => _isCalibratingGps = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('GPS Access: $e. Simulating regional grid offset.'),
+            backgroundColor: AppColors.primaryPurple,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      final math.Random random = math.Random();
+      final double simulatedLat = 27.7172 + (random.nextDouble() - 0.5) * 0.005;
+      final double simulatedLng = 85.3240 + (random.nextDouble() - 0.5) * 0.005;
+      setState(() {
+        _latitude = simulatedLat;
+        _longitude = simulatedLng;
+        _locationController.text = 'Sector Grid ${random.nextInt(90) + 10}';
+      });
+    }
   }
 
   @override
