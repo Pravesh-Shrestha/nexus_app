@@ -9,6 +9,7 @@ import 'package:nexus_app/features/event/data/event_service.dart';
 import 'package:nexus_app/features/explore/presentation/create_community_screen.dart';
 import 'package:nexus_app/features/explore/presentation/create_event_screen.dart';
 import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
+import 'package:nexus_app/features/explore/presentation/community_details_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -109,39 +110,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  void _showCommunityDetails(CommunityModel community) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text(
-          community.name,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              community.description,
-              style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Members count: ${community.memberUids.length}',
-              style: const TextStyle(color: AppColors.primaryCyan, fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            child: const Text('Close', style: TextStyle(color: Colors.white38)),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -451,153 +419,170 @@ class _ExploreScreenState extends State<ExploreScreen> {
               badgeColor = AppColors.primaryCyan;
             }
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.05),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Gradient Card Header with Badge
-                  Container(
-                    height: 80,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      gradient: LinearGradient(
-                        colors: [
-                          badgeColor.withValues(alpha: 0.2),
-                          Colors.transparent,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    alignment: Alignment.topLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: badgeColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: badgeColor, width: 1),
-                      ),
-                      child: Text(
-                        badge,
-                        style: TextStyle(
-                          color: badgeColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 9,
-                        ),
-                      ),
-                    ),
+            return GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CommunityDetailsScreen(community: community),
                   ),
-
-                  // Card Content Details
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              community.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              '${community.memberUids.length} active',
-                              style: const TextStyle(
-                                color: Colors.white38,
-                                fontSize: 12,
-                              ),
-                            ),
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Gradient Card Header with Badge
+                    Container(
+                      height: 80,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                        gradient: LinearGradient(
+                          colors: [
+                            badgeColor.withValues(alpha: 0.2),
+                            Colors.transparent,
                           ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          community.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white60,
-                            fontSize: 13,
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      alignment: Alignment.topLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: badgeColor, width: 1),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            color: badgeColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 9,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
+                      ),
+                    ),
+
+                    // Card Content Details
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                community.name,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '${community.memberUids.length} active',
+                                style: const TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            community.description,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isJoined ? AppColors.surfaceHighlight : AppColors.successGreen,
+                                    foregroundColor: isJoined ? Colors.white60 : Colors.black,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      side: isJoined ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                  onPressed: () {
+                                    if (isJoined) {
+                                      _communityService.leaveCommunity(community.id, _currentUserId);
+                                    } else {
+                                      _communityService.joinCommunity(community.id, _currentUserId);
+                                    }
+                                  },
+                                  child: Text(
+                                    isJoined ? 'Leave Comm' : 'Join Comm',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: isJoined ? AppColors.surfaceHighlight : AppColors.successGreen,
-                                  foregroundColor: isJoined ? Colors.white60 : Colors.black,
+                                  backgroundColor: AppColors.surfaceHighlight,
+                                  foregroundColor: Colors.white,
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
-                                    side: isJoined ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                                    side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 ),
                                 onPressed: () {
-                                  if (isJoined) {
-                                    _communityService.leaveCommunity(community.id, _currentUserId);
-                                  } else {
-                                    _communityService.joinCommunity(community.id, _currentUserId);
-                                  }
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CommunityDetailsScreen(community: community),
+                                    ),
+                                  );
                                 },
-                                child: Text(
-                                  isJoined ? 'Leave Comm' : 'Join Comm',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                child: const Text(
+                                  'View',
+                                  style: TextStyle(fontSize: 13),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.surfaceHighlight,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.share_outlined, color: Colors.white60, size: 20),
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Community link copied to clipboard!'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                },
                               ),
-                              onPressed: () => _showCommunityDetails(community),
-                              child: const Text(
-                                'View',
-                                style: TextStyle(fontSize: 13),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              icon: const Icon(Icons.share_outlined, color: Colors.white60, size: 20),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Community link copied to clipboard!'),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
