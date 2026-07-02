@@ -329,21 +329,43 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // Join / Joined Button
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF6C8CFF),
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                              elevation: 0,
-                            ),
-                            onPressed: () => _toggleJoin(isMember),
-                            child: Text(
-                              isMember ? 'Joined' : 'Join',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                          ),
+                           // Join / Joined Button
+                           ElevatedButton(
+                             style: ElevatedButton.styleFrom(
+                               backgroundColor: community.creatorId == _currentUserId
+                                   ? AppColors.primaryPurple.withValues(alpha: 0.2)
+                                   : const Color(0xFF6C8CFF),
+                               foregroundColor: community.creatorId == _currentUserId
+                                   ? AppColors.primaryPurple
+                                   : Colors.black,
+                               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                               shape: RoundedRectangleBorder(
+                                 borderRadius: BorderRadius.circular(20),
+                                 side: community.creatorId == _currentUserId
+                                     ? const BorderSide(color: AppColors.primaryPurple, width: 1)
+                                     : BorderSide.none,
+                               ),
+                               elevation: 0,
+                             ),
+                             onPressed: () {
+                               if (community.creatorId == _currentUserId) {
+                                 ScaffoldMessenger.of(context).showSnackBar(
+                                   const SnackBar(
+                                     content: Text('As the creator, you cannot leave this community.'),
+                                     backgroundColor: AppColors.errorRed,
+                                   ),
+                                 );
+                                 return;
+                               }
+                               _toggleJoin(isMember);
+                             },
+                             child: Text(
+                               community.creatorId == _currentUserId
+                                   ? 'Creator'
+                                   : (isMember ? 'Joined' : 'Join'),
+                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                             ),
+                           ),
                         ],
                       ),
                     ),

@@ -651,16 +651,36 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                 ),
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF2ECC71),
-                                    foregroundColor: Colors.black,
+                                    backgroundColor: event.organizerId == widget.currentUserId
+                                        ? AppColors.primaryCyan.withValues(alpha: 0.2)
+                                        : const Color(0xFF2ECC71),
+                                    foregroundColor: event.organizerId == widget.currentUserId
+                                        ? AppColors.primaryCyan
+                                        : Colors.black,
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
+                                      side: event.organizerId == widget.currentUserId
+                                          ? const BorderSide(color: AppColors.primaryCyan, width: 1)
+                                          : BorderSide.none,
                                     ),
                                   ),
-                                  onPressed: () => _toggleRsvp(isGoing),
+                                  onPressed: () {
+                                    if (event.organizerId == widget.currentUserId) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('As the organizer, you are always attending this event.'),
+                                          backgroundColor: AppColors.errorRed,
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    _toggleRsvp(isGoing);
+                                  },
                                   child: Text(
-                                    isGoing ? 'Going ✓' : "RSVP — I'm in",
+                                    event.organizerId == widget.currentUserId
+                                        ? 'Organizer'
+                                        : (isGoing ? 'Going ✓' : "RSVP — I'm in"),
                                     style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,

@@ -4,8 +4,12 @@ import 'package:nexus_app/features/home/presentation/home_screen.dart';
 import 'package:nexus_app/features/profile/presentation/profile_screen.dart';
 import 'package:nexus_app/features/chat/presentation/inbox_screen.dart';
 import 'package:animated_notch_bottom_bar/animated_notch_bottom_bar/animated_notch_bottom_bar.dart';
-
 import 'package:nexus_app/features/explore/presentation/explore_screen.dart';
+
+class TabNavigationController {
+  static final ValueNotifier<int> activeTab = ValueNotifier<int>(0);
+  static final ValueNotifier<bool> exploreEventsTab = ValueNotifier<bool>(false);
+}
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -21,10 +25,25 @@ class _MainLayoutState extends State<MainLayout> {
   int maxCount = 4;
 
   @override
+  void initState() {
+    super.initState();
+    TabNavigationController.activeTab.addListener(_onTabChanged);
+  }
+
+  @override
   void dispose() {
+    TabNavigationController.activeTab.removeListener(_onTabChanged);
     _pageController.dispose();
     _notchBottomBarController.dispose();
     super.dispose();
+  }
+
+  void _onTabChanged() {
+    final idx = TabNavigationController.activeTab.value;
+    if (idx >= 0 && idx < maxCount) {
+      _pageController.jumpToPage(idx);
+      _notchBottomBarController.jumpTo(idx);
+    }
   }
 
   final List<Widget> _pages = [
@@ -77,6 +96,7 @@ class _MainLayoutState extends State<MainLayout> {
               ],
               onTap: (index) {
                 _pageController.jumpToPage(index);
+                TabNavigationController.activeTab.value = index;
               },
               kIconSize: 24.0,
               kBottomRadius: 28.0,

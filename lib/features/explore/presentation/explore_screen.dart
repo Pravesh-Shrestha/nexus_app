@@ -517,16 +517,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               Expanded(
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: isJoined ? AppColors.surfaceHighlight : AppColors.successGreen,
-                                    foregroundColor: isJoined ? Colors.white60 : Colors.black,
+                                    backgroundColor: community.creatorId == _currentUserId
+                                        ? AppColors.primaryPurple.withValues(alpha: 0.2)
+                                        : (isJoined ? AppColors.surfaceHighlight : AppColors.successGreen),
+                                    foregroundColor: community.creatorId == _currentUserId
+                                        ? AppColors.primaryPurple
+                                        : (isJoined ? Colors.white60 : Colors.black),
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
-                                      side: isJoined ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none,
+                                      side: community.creatorId == _currentUserId
+                                          ? const BorderSide(color: AppColors.primaryPurple, width: 1)
+                                          : (isJoined ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none),
                                     ),
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
                                   onPressed: () {
+                                    if (community.creatorId == _currentUserId) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('As the creator, you cannot leave this community.'),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                      return;
+                                    }
                                     if (isJoined) {
                                       _communityService.leaveCommunity(community.id, _currentUserId);
                                     } else {
@@ -534,7 +549,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                     }
                                   },
                                   child: Text(
-                                    isJoined ? 'Leave Comm' : 'Join Comm',
+                                    community.creatorId == _currentUserId
+                                        ? 'Creator'
+                                        : (isJoined ? 'Leave Comm' : 'Join Comm'),
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                   ),
                                 ),
@@ -759,11 +776,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     // RSVP Interactive Checkbox
                     IconButton(
                       icon: Icon(
-                        isGoing ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded,
-                        color: isGoing ? AppColors.primaryPurple : Colors.white38,
+                        event.organizerId == _currentUserId
+                            ? Icons.stars_rounded // Stars icon for organizer
+                            : (isGoing ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded),
+                        color: event.organizerId == _currentUserId
+                            ? AppColors.primaryCyan
+                            : (isGoing ? AppColors.primaryPurple : Colors.white38),
                         size: 26,
                       ),
                       onPressed: () {
+                        if (event.organizerId == _currentUserId) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('As the organizer, you are always attending this event.'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
                         if (isGoing) {
                           _eventService.cancelRsvp(event.id, _currentUserId);
                         } else {
