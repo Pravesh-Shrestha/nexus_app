@@ -489,6 +489,7 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
 
   Widget _buildPostCard(PostModel post) {
     final isLiked = post.likedUserIds.contains(_currentUserId);
+    final isDisliked = post.dislikedUserIds.contains(_currentUserId);
     final initial = post.authorName.isNotEmpty ? post.authorName[0].toUpperCase() : 'G';
 
     return GestureDetector(
@@ -606,6 +607,29 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
                             '${post.likedUserIds.length}',
                             style: TextStyle(
                               color: isLiked ? AppColors.primaryCyan : Colors.white38,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+
+                    // Dislike button
+                    GestureDetector(
+                      onTap: () => _postService.dislikePost(post.id, _currentUserId),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isDisliked ? Icons.thumb_down_rounded : Icons.thumb_down_alt_outlined,
+                            color: isDisliked ? const Color(0xFFFF6B6B) : Colors.white38,
+                            size: 15,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${post.dislikedUserIds.length}',
+                            style: TextStyle(
+                              color: isDisliked ? const Color(0xFFFF6B6B) : Colors.white38,
                               fontSize: 11,
                             ),
                           ),

@@ -64,7 +64,7 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.authorId == request.auth.uid;
       allow update: if request.auth != null && (
         resource.data.authorId == request.auth.uid ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedUserIds'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedUserIds', 'dislikedUserIds'])
       );
 
       // Comments subcollection

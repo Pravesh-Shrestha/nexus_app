@@ -9,6 +9,7 @@ class PostModel {
   final String imageUrl;
   final List<String> tags;
   final List<String> likedUserIds;
+  final List<String> dislikedUserIds;
   final DateTime timestamp;
 
   PostModel({
@@ -20,6 +21,7 @@ class PostModel {
     this.imageUrl = '',
     this.tags = const [],
     this.likedUserIds = const [],
+    this.dislikedUserIds = const [],
     required this.timestamp,
   });
 
@@ -33,6 +35,7 @@ class PostModel {
       'imageUrl': imageUrl,
       'tags': tags,
       'likedUserIds': likedUserIds,
+      'dislikedUserIds': dislikedUserIds,
       'timestamp': Timestamp.fromDate(timestamp),
     };
   }
@@ -48,6 +51,7 @@ class PostModel {
       imageUrl: json['imageUrl'] ?? '',
       tags: List<String>.from(json['tags'] ?? []),
       likedUserIds: List<String>.from(json['likedUserIds'] ?? []),
+      dislikedUserIds: List<String>.from(json['dislikedUserIds'] ?? []),
       timestamp: ts.toDate(),
     );
   }

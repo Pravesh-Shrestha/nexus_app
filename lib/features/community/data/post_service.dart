@@ -65,10 +65,34 @@ class PostService {
       } else {
         await docRef.update({
           'likedUserIds': FieldValue.arrayUnion([userId]),
+          'dislikedUserIds': FieldValue.arrayRemove([userId]), // remove dislike if liking
         });
       }
     } catch (e) {
       throw 'Failed to like post: $e';
+    }
+  }
+
+  // Dislike or undislike a post
+  Future<void> dislikePost(String postId, String userId) async {
+    try {
+      final docRef = _firestore.collection('posts').doc(postId);
+      final doc = await docRef.get();
+      if (!doc.exists) return;
+
+      final post = PostModel.fromJson(doc.data()!);
+      if (post.dislikedUserIds.contains(userId)) {
+        await docRef.update({
+          'dislikedUserIds': FieldValue.arrayRemove([userId]),
+        });
+      } else {
+        await docRef.update({
+          'dislikedUserIds': FieldValue.arrayUnion([userId]),
+          'likedUserIds': FieldValue.arrayRemove([userId]), // remove like if disliking
+        });
+      }
+    } catch (e) {
+      throw 'Failed to dislike post: $e';
     }
   }
 
