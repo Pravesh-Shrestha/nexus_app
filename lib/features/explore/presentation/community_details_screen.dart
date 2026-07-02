@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -659,7 +660,18 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
                     const Text('312', style: TextStyle(color: Colors.white38, fontSize: 11)),
                   ],
                 ),
-                const Icon(Icons.share_outlined, color: Colors.white38, size: 15),
+                GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: 'https://nexusapp.com/post/${post.id}'));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Post link copied to clipboard!'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.share_outlined, color: Colors.white38, size: 15),
+                ),
               ],
             ),
           ],

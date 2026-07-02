@@ -608,6 +608,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               IconButton(
                                 icon: const Icon(Icons.share_outlined, color: Colors.white60, size: 20),
                                 onPressed: () {
+                                  Clipboard.setData(ClipboardData(text: 'https://nexusapp.com/community/${community.id}'));
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('Community link copied to clipboard!'),

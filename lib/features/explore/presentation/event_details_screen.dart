@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
@@ -694,6 +695,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                             // Share Action Button
                             GestureDetector(
                               onTap: () {
+                                Clipboard.setData(ClipboardData(text: 'https://nexusapp.com/event/${event.id}'));
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Event link copied to clipboard!'),
