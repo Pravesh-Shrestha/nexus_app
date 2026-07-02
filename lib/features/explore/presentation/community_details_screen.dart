@@ -1,9 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/services/cloudinary_service.dart';
+import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/features/auth/data/user_model.dart';
+import 'package:nexus_app/features/friends/presentation/view_friend_screen.dart';
 import 'package:nexus_app/features/community/data/community_model.dart';
 import 'package:nexus_app/features/community/data/community_service.dart';
 import 'package:nexus_app/features/community/data/post_model.dart';
@@ -63,6 +67,92 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
         );
       }
     }
+  }
+
+  void _deleteCommunity() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surfaceHighlight,
+        title: const Text('Delete Community', style: TextStyle(color: Colors.white)),
+        content: const Text('Are you sure you want to delete this community permanently?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: AppColors.errorRed)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance.collection('communities').doc(widget.community.id).delete();
+        if (mounted) {
+          Navigator.pop(context); // pop creator menu / details screen
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Community deleted successfully!'), backgroundColor: AppColors.successGreen),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e'), backgroundColor: AppColors.errorRed),
+          );
+        }
+      }
+    }
+  }
+
+  void _editCommunity() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _EditCommunitySheet(
+        community: widget.community,
+      ),
+    );
+  }
+
+  void _showCreatorMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit, color: AppColors.primaryCyan),
+              title: const Text('Edit Community', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                _editCommunity();
+              },
+            ),
+            const Divider(color: Colors.white10),
+            ListTile(
+              leading: const Icon(Icons.delete, color: AppColors.errorRed),
+              title: const Text('Delete Community', style: TextStyle(color: AppColors.errorRed)),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteCommunity();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showCreatePostSheet() {
@@ -159,22 +249,44 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
                           ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryCyan.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.primaryCyan.withValues(alpha: 0.4), width: 1),
-                        ),
-                        child: const Text(
-                          'HOT',
-                          style: TextStyle(
-                            color: AppColors.primaryCyan,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryCyan.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.primaryCyan.withValues(alpha: 0.4), width: 1),
+                            ),
+                            child: const Text(
+                              'HOT',
+                              style: TextStyle(
+                                color: AppColors.primaryCyan,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (community.creatorId == _currentUserId) ...[
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _showCreatorMenu,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white24, width: 1),
+                                ),
+                                child: const Icon(
+                                  Icons.more_horiz,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
@@ -511,68 +623,28 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
   }
 
   Widget _buildMembersTab(CommunityModel community) {
-    // Generate simple list of members starting with creator
     final memberList = List<String>.from(community.memberUids);
     
+    if (memberList.isEmpty) {
+      return const Center(
+        child: Text('No members yet.', style: TextStyle(color: Colors.white38, fontSize: 14)),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
       itemCount: memberList.length,
       itemBuilder: (context, index) {
         final uid = memberList[index];
         final isCreator = uid == community.creatorId;
-        final name = isCreator ? 'Zenith_Pro' : (index == 1 ? 'Nova_Strike' : (index == 2 ? 'Rift_Walker' : 'Pixel_Queen'));
-        final role = isCreator ? 'Immortal 2 · TACTICAL' : (index == 1 ? 'Diamond 1 · SUPPORT' : (index == 2 ? 'Platinum 1 · ENTRY' : 'Diamond 1 · FLEX'));
+        // Mock compatibility score
         final matchPercent = isCreator ? '92%' : (index == 1 ? '80%' : (index == 2 ? '71%' : '64%'));
-        final color = isCreator ? Colors.green : (index == 1 ? Colors.purple : (index == 2 ? Colors.cyan : Colors.pink));
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF13141B),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white10, width: 1),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: color,
-                    child: Text(
-                      name[0].toUpperCase(),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        role,
-                        style: const TextStyle(color: Colors.grey, fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Text(
-                matchPercent,
-                style: const TextStyle(
-                  color: AppColors.successGreen,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
+        return MemberRow(
+          uid: uid,
+          isCreator: isCreator,
+          currentUserId: _currentUserId,
+          matchPercent: matchPercent,
         );
       },
     );
@@ -620,6 +692,228 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
           },
         );
       },
+    );
+  }
+}
+
+class MemberRow extends StatelessWidget {
+  final String uid;
+  final bool isCreator;
+  final String currentUserId;
+  final String matchPercent;
+
+  const MemberRow({
+    super.key,
+    required this.uid,
+    required this.isCreator,
+    required this.currentUserId,
+    required this.matchPercent,
+  });
+
+  Color _getAvatarColor(String seed) {
+    final colors = [
+      Colors.green,
+      Colors.purple,
+      Colors.teal,
+      Colors.pink,
+      Colors.blue,
+      Colors.orange,
+      Colors.indigo
+    ];
+    final hash = seed.hashCode.abs();
+    return colors[hash % colors.length];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<UserModel?>(
+      future: AuthService().getUserData(uid),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const SizedBox();
+        }
+        final user = snapshot.data!;
+        final name = user.username.isNotEmpty ? user.username : user.fullName;
+        final role = user.role.isNotEmpty ? '${user.role} · ${user.playstyle}' : 'Member';
+        final color = _getAvatarColor(name);
+
+        return GestureDetector(
+          onTap: () {
+            if (uid == currentUserId) return; // Don't view yourself
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ViewFriendScreen(userModel: user),
+              ),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF13141B),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white10, width: 1),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: color,
+                      child: Text(
+                        name[0].toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            if (isCreator) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryPurple.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'CREATOR',
+                                  style: TextStyle(color: AppColors.primaryPurple, fontSize: 8, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          role,
+                          style: const TextStyle(color: Colors.grey, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Text(
+                  matchPercent,
+                  style: const TextStyle(
+                    color: AppColors.successGreen,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _EditCommunitySheet extends StatefulWidget {
+  final CommunityModel community;
+  const _EditCommunitySheet({required this.community});
+
+  @override
+  State<_EditCommunitySheet> createState() => _EditCommunitySheetState();
+}
+
+class _EditCommunitySheetState extends State<_EditCommunitySheet> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  late TextEditingController _descController;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.community.name);
+    _descController = TextEditingController(text: widget.community.description);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  void _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+    try {
+      await FirebaseFirestore.instance.collection('communities').doc(widget.community.id).update({
+        'name': _nameController.text.trim(),
+        'description': _descController.text.trim(),
+      });
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Community updated successfully!'), backgroundColor: AppColors.successGreen),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update: $e'), backgroundColor: AppColors.errorRed),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 24, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('EDIT COMMUNITY', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _nameController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(labelText: 'Name', labelStyle: TextStyle(color: Colors.white60)),
+              validator: (val) => val == null || val.trim().isEmpty ? 'Name is required' : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(labelText: 'Description', labelStyle: TextStyle(color: Colors.white60)),
+              validator: (val) => val == null || val.trim().isEmpty ? 'Description is required' : null,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C8CFF)),
+                onPressed: _isSaving ? null : _save,
+                child: _isSaving ? const CircularProgressIndicator() : const Text('Save Changes', style: TextStyle(color: Colors.black)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
