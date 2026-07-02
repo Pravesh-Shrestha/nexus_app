@@ -19,6 +19,8 @@ class UserModel {
   final String bio;
   final String phoneNumber;
   final String location;
+  final double? latitude;
+  final double? longitude;
 
   UserModel({
     required this.uid,
@@ -35,6 +37,8 @@ class UserModel {
     this.bio = '',
     this.phoneNumber = '',
     this.location = '',
+    this.latitude,
+    this.longitude,
   });
 
   // Convert to Map for Firestore
@@ -54,6 +58,8 @@ class UserModel {
       'bio': bio,
       'phoneNumber': phoneNumber,
       'location': location,
+      'latitude': latitude,
+      'longitude': longitude,
       'createdAt': DateTime.now().toIso8601String(),
     };
   }
@@ -75,6 +81,8 @@ class UserModel {
       bio: json['bio'] ?? '',
       phoneNumber: json['phoneNumber'] ?? '',
       location: json['location'] ?? '',
+      latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
+      longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
     );
   }
 
@@ -94,6 +102,8 @@ class UserModel {
     String? bio,
     String? phoneNumber,
     String? location,
+    double? latitude,
+    double? longitude,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -110,6 +120,8 @@ class UserModel {
       bio: bio ?? this.bio,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       location: location ?? this.location,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 }
