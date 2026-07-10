@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nexus_app/features/auth/presentation/signup_screen.dart';
 import 'package:nexus_app/features/home/presentation/main_layout.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
@@ -20,6 +22,95 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberMe = false;
   bool _isLoading = false;
   final AuthService _authService = AuthService();
+
+  bool _isBiometricSupported = false;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedEmail();
+    _checkBiometricsSupport();
+  }
+
+  Future<void> _loadSavedEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastEmail = prefs.getString('cached_user_email') ?? '';
+      if (lastEmail.isNotEmpty && mounted) {
+        _usernameController.text = lastEmail;
+      }
+    } catch (e) {
+      debugPrint('Error loading saved email: $e');
+    }
+  }
+
+  Future<void> _checkBiometricsSupport() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bool useBiometricsSetting = prefs.getBool('use_biometrics') ?? false;
+      if (!useBiometricsSetting) return;
+
+      final isAvailable = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
+      if (isAvailable && mounted) {
+        setState(() {
+          _isBiometricSupported = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking biometrics support: $e');
+    }
+  }
+
+  Future<void> _loginWithBiometrics() async {
+    setState(() => _isLoading = true);
+    try {
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Scan fingerprint or face to authenticate and decrypt Nexus profile.',
+        persistAcrossBackgrounding: true,
+        biometricOnly: true,
+      );
+
+      if (authenticated) {
+        final prefs = await SharedPreferences.getInstance();
+        final email = prefs.getString('cached_user_email') ?? '';
+        final password = prefs.getString('cached_user_password') ?? '';
+
+        if (email.isNotEmpty && password.isNotEmpty) {
+          await _authService.signInWithEmail(email: email, password: password);
+          await prefs.setInt('last_biometric_verification', DateTime.now().millisecondsSinceEpoch);
+
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const MainLayout()),
+            );
+          }
+        } else {
+          final currentUser = _authService.currentUser;
+          if (currentUser != null) {
+            await prefs.setInt('last_biometric_verification', DateTime.now().millisecondsSinceEpoch);
+            if (mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const MainLayout()),
+              );
+            }
+          } else {
+            throw 'No cached credentials found. Please log in with password once first.';
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Biometric Login Error: $e'), backgroundColor: AppColors.errorRed),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -42,6 +133,10 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _usernameController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cached_user_email', _usernameController.text.trim());
+      await prefs.setString('cached_user_password', _passwordController.text.trim());
+
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MainLayout()),
@@ -392,10 +487,32 @@ class _LoginScreenState extends State<LoginScreen> {
                     
                     const SizedBox(height: 32),
                     
-                    GradientButton(
-                      text: 'LOGIN',
-                      isLoading: _isLoading,
-                      onTap: _isLoading ? () {} : _login,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GradientButton(
+                            text: 'LOGIN',
+                            isLoading: _isLoading,
+                            onTap: _isLoading ? () {} : _login,
+                          ),
+                        ),
+                        if (_isBiometricSupported) ...[
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: _isLoading ? null : _loginWithBiometrics,
+                            child: Container(
+                              height: 50,
+                              width: 50,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF16171D),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white10),
+                              ),
+                              child: const Icon(Icons.fingerprint, color: AppColors.primaryCyan, size: 28),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     
                     const SizedBox(height: 32),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
@@ -16,6 +18,10 @@ class _AdvancedSettingsScreenState extends State<AdvancedSettingsScreen> {
   UserSettingsModel? _userSettings;
   bool _isLoading = true;
 
+  bool _useBiometrics = false;
+  int _biometricIntervalDays = 3;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
   @override
   void initState() {
     super.initState();
@@ -23,6 +29,10 @@ class _AdvancedSettingsScreenState extends State<AdvancedSettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final localBiometrics = prefs.getBool('use_biometrics') ?? false;
+    final localInterval = prefs.getInt('biometric_days_interval') ?? 3;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
@@ -30,12 +40,16 @@ class _AdvancedSettingsScreenState extends State<AdvancedSettingsScreen> {
         if (mounted) {
           setState(() {
             _userSettings = settings;
+            _useBiometrics = localBiometrics;
+            _biometricIntervalDays = localInterval;
             _isLoading = false;
           });
         }
       } catch (e) {
         if (mounted) {
           setState(() {
+            _useBiometrics = localBiometrics;
+            _biometricIntervalDays = localInterval;
             _isLoading = false;
           });
         }
@@ -43,10 +57,59 @@ class _AdvancedSettingsScreenState extends State<AdvancedSettingsScreen> {
     } else {
       if (mounted) {
         setState(() {
+          _useBiometrics = localBiometrics;
+          _biometricIntervalDays = localInterval;
           _isLoading = false;
         });
       }
     }
+  }
+
+  Future<void> _toggleBiometrics(bool enable) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (enable) {
+      try {
+        final isAvailable = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
+        if (!isAvailable) {
+          throw 'Biometric hardware is not supported or configured on this device.';
+        }
+
+        final authenticated = await _localAuth.authenticate(
+          localizedReason: 'Enable biometrics to securely log into Nexus.',
+          persistAcrossBackgrounding: true,
+          biometricOnly: true,
+        );
+
+        if (authenticated) {
+          await prefs.setBool('use_biometrics', true);
+          await prefs.setInt('last_biometric_verification', DateTime.now().millisecondsSinceEpoch);
+          setState(() {
+            _useBiometrics = true;
+          });
+        } else {
+          throw 'Authentication cancelled.';
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to enable biometrics: $e'), backgroundColor: AppColors.errorRed),
+          );
+        }
+      }
+    } else {
+      await prefs.setBool('use_biometrics', false);
+      setState(() {
+        _useBiometrics = false;
+      });
+    }
+  }
+
+  Future<void> _updateBiometricInterval(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('biometric_days_interval', days);
+    setState(() {
+      _biometricIntervalDays = days;
+    });
   }
 
   Future<void> _updateSetting(UserSettingsModel updatedSettings) async {
@@ -164,6 +227,45 @@ class _AdvancedSettingsScreenState extends State<AdvancedSettingsScreen> {
                               },
                             ),
                           ),
+                          const Divider(color: Colors.white10, height: 1),
+                          _buildSettingsTile(
+                            Icons.fingerprint,
+                            'Biometric Security',
+                            'Unlock Nexus with fingerprint or facial ID scan',
+                            Colors.tealAccent,
+                            trailing: Switch(
+                              value: _useBiometrics,
+                              activeThumbColor: AppColors.primaryCyan,
+                              activeTrackColor: AppColors.primaryPurple.withValues(alpha: 0.5),
+                              inactiveThumbColor: Colors.white60,
+                              inactiveTrackColor: Colors.white10,
+                              onChanged: (value) => _toggleBiometrics(value),
+                            ),
+                          ),
+                          if (_useBiometrics) ...[
+                            const Divider(color: Colors.white10, height: 1),
+                            _buildSettingsTile(
+                              Icons.history_toggle_off,
+                              'Verification Cycle',
+                              'Enforce biometrics lock after interval',
+                              Colors.cyanAccent,
+                              trailing: DropdownButton<int>(
+                                value: _biometricIntervalDays,
+                                dropdownColor: AppColors.surface,
+                                underline: const SizedBox(),
+                                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                items: const [
+                                  DropdownMenuItem(value: 3, child: Text('Every 3 Days')),
+                                  DropdownMenuItem(value: 5, child: Text('Every 5 Days')),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    _updateBiometricInterval(value);
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

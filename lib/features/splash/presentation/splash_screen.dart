@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/welcome/presentation/welcome_screen.dart';
 import 'package:nexus_app/features/home/presentation/main_layout.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/features/auth/presentation/biometric_lock_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,10 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
         final user = authService.currentUser;
         
         if (user != null) {
-          // User is already logged in
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const MainLayout()),
-          );
+          _checkBiometricSession(user.uid);
         } else {
           // No user logged in
           Navigator.of(context).pushReplacement(
@@ -34,6 +33,43 @@ class _SplashScreenState extends State<SplashScreen> {
         }
       }
     });
+  }
+
+  Future<void> _checkBiometricSession(String uid) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bool useBiometrics = prefs.getBool('use_biometrics') ?? false;
+      final int lastVerification = prefs.getInt('last_biometric_verification') ?? 0;
+      final int intervalDays = prefs.getInt('biometric_days_interval') ?? 3;
+
+      if (useBiometrics) {
+        final DateTime lastDateTime = DateTime.fromMillisecondsSinceEpoch(lastVerification);
+        final int diffDays = DateTime.now().difference(lastDateTime).inDays;
+
+        if (diffDays >= intervalDays || lastVerification == 0) {
+          final userModel = await AuthService().getUserData(uid);
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => BiometricLockScreen(
+                  username: userModel?.username ?? 'Agent',
+                  profileImageUrl: userModel?.profileImageUrl ?? '',
+                ),
+              ),
+            );
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Biometric Session Check Failure: $e');
+    }
+
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainLayout()),
+      );
+    }
   }
 
   @override

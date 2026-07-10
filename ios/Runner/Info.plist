@@ -66,5 +66,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Nexus requires location access to find nearby allies and show your position on the map.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Nexus requires location access to find nearby allies and show your position on the map.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Nexus requires camera access to snap your profile picture and capture event photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Nexus requires photo library access to upload your custom avatar and attach photos to posts.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Nexus requires Face ID access to securely log you in without requiring password entry.</string>
 </dict>
 </plist>

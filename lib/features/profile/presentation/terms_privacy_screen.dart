@@ -193,6 +193,10 @@ class _TermsPrivacyScreenState extends State<TermsPrivacyScreen> {
                         _buildSectionBody(
                           'Nexus is provided "as is" without warranty of any kind. We are not liable for interactions between players online or offline, nor for services provided by third-party games listed in the application.',
                         ),
+                        _buildSectionTitle('6. Location and Biometric Security'),
+                        _buildSectionBody(
+                          'Nexus offers optional features utilizing GPS coordinates to find nearby gaming allies and display event locations. Real-time GPS sharing is entirely voluntary and can be disabled at any time. If enabled, biometric session authentication (Face ID or Fingerprint login) operates strictly local to your device using native operating system APIs. Nexus does not store or transmit biometric descriptors.',
+                        ),
                         const SizedBox(height: 40),
                       ],
                     ),
@@ -223,11 +227,11 @@ class _TermsPrivacyScreenState extends State<TermsPrivacyScreen> {
                         ),
                         _buildSectionTitle('1. Information We Collect'),
                         _buildSectionBody(
-                          'We collect information to customize and improve your gaming squad connections: \n• Account Information: Name, Email Address, Password, Date of Birth, and Gender.\n• Profile details: Bio, Phone Number, Location, Avatar image seed.\n• Game Preferences: Playing roles, preferred playstyle, and skill level ratings.',
+                          'We collect information to customize and improve your gaming squad connections: \n• Account Information: Name, Email Address, Password, Date of Birth, and Gender.\n• Profile details: Bio, Phone Number, Location, Avatar image seed.\n• Real-time GPS Location Coordinates (optional): Used to map and calculate distances between players.\n• Game Preferences: Playing roles, preferred playstyle, and skill level ratings.\n• NOTE ON BIOMETRIC DATA: Biometric verification (fingerprint or facial data) is managed exclusively by your device OS secure enclave. Nexus does not access, collect, or store any biometric data.',
                         ),
                         _buildSectionTitle('2. How We Use Your Information'),
                         _buildSectionBody(
-                          'Your profile is used to connect you with relevant players. \n• Matchmaking: We display your preferences (Games, Role, Playstyle) publicly to other users.\n• Security: Email and phone number details are used to verify accounts and prevent spam.\n• Customization: Location details help find local servers and community players.',
+                          'Your profile is used to connect you with relevant players. \n• Matchmaking: We display your preferences (Games, Role, Playstyle) publicly to other users.\n• Security: Email and phone number details are used to verify accounts and prevent spam.\n• Customization: Location details and GPS coordinates help verify physical proximity to other players and map local gaming meetups.',
                         ),
                         _buildSectionTitle('3. Data Sharing'),
                         _buildSectionBody(
