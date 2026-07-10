@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/auth/presentation/setup_success_screen.dart';
@@ -404,11 +403,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       );
                     }
                   } on AppException catch (e) {
-                    if (mounted) {
+                    if (context.mounted) {
                       CustomSnackBar.showErrorSnackBar(context, e);
                     }
                   } catch (e) {
-                    if (mounted) {
+                    if (context.mounted) {
                       CustomSnackBar.showErrorSnackBar(
                         context,
                         AppException(

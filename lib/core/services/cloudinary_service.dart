@@ -51,7 +51,6 @@ class CloudinaryService {
           actionText: 'Retry',
         );
       }
-    } catch (e) {
     } on AppException {
       rethrow;
     } catch (e) {
