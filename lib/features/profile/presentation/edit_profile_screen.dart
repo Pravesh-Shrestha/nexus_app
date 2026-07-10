@@ -12,6 +12,8 @@ import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/core/services/cloudinary_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -73,11 +75,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     } catch (e) {
       setState(() => _isCalibratingGps = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('GPS Access: $e. Simulating regional grid offset.'),
-            backgroundColor: AppColors.primaryPurple,
-            behavior: SnackBarBehavior.floating,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'GPS Access Failed',
+            message: 'GPS Access: $e. Simulating regional grid offset.',
+            actionText: 'Okay',
           ),
         );
       }
@@ -458,13 +461,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           setState(() => _isSaving = false);
         }
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to upload image: $e'),
-            backgroundColor: AppColors.errorRed,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Upload Failed',
+            message: 'Failed to upload image. Please try again.',
+            actionText: 'Retry',
           ),
         );
       }
@@ -540,20 +550,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       await AuthService().saveUserData(updatedModel);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully'),
-            backgroundColor: AppColors.successGreen,
-          ),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Success',
+          message: 'Profile updated successfully',
         );
         Navigator.of(context).pop();
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.errorRed,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Update Failed',
+            message: 'Failed to update profile. Please try again.',
+            actionText: 'Retry',
           ),
         );
       }

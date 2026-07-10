@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/event/data/event_model.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
 
 class EventService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -43,7 +44,11 @@ class EventService {
 
       await docRef.set(event.toJson());
     } catch (e) {
-      throw 'Failed to create event: $e';
+      throw AppException(
+        title: 'Event Creation Failed',
+        message: 'Failed to create event. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -54,7 +59,11 @@ class EventService {
         'attendeeUids': FieldValue.arrayUnion([uid]),
       });
     } catch (e) {
-      throw 'Failed to RSVP to event: $e';
+      throw AppException(
+        title: 'RSVP Failed',
+        message: 'Failed to RSVP to event. Please check your connection.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -65,7 +74,11 @@ class EventService {
         'attendeeUids': FieldValue.arrayRemove([uid]),
       });
     } catch (e) {
-      throw 'Failed to cancel RSVP: $e';
+      throw AppException(
+        title: 'Action Failed',
+        message: 'Failed to cancel RSVP. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 }

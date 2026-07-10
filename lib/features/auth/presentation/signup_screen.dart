@@ -8,6 +8,8 @@ import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/profile/presentation/terms_privacy_screen.dart';
 import 'package:nexus_app/core/utils/date_input_formatter.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -44,17 +46,24 @@ class _SignupScreenState extends State<SignupScreen> {
         _usernameController.text.isEmpty ||
         _dobController.text.isEmpty ||
         _selectedGender == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill out all fields')),
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Missing Information',
+          message: 'Please fill out all fields to continue.',
+          actionText: 'Okay',
+        ),
       );
       return;
     }
 
     if (!_agreeToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You must agree to the Terms and Privacy Policy to register'),
-          backgroundColor: AppColors.errorRed,
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Terms not accepted',
+          message: 'You must agree to the Terms and Privacy Policy to register.',
+          actionText: 'Okay',
         ),
       );
       return;
@@ -63,10 +72,12 @@ class _SignupScreenState extends State<SignupScreen> {
     final dobText = _dobController.text.trim();
     final dobRegex = RegExp(r'^\d{4}/\d{2}/\d{2}$');
     if (!dobRegex.hasMatch(dobText)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid Date of Birth (YYYY/MM/DD)'),
-          backgroundColor: AppColors.errorRed,
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Invalid Input',
+          message: 'Please enter a valid Date of Birth (YYYY/MM/DD).',
+          actionText: 'Okay',
         ),
       );
       return;
@@ -77,10 +88,12 @@ class _SignupScreenState extends State<SignupScreen> {
     final month = int.tryParse(parts[1]) ?? 0;
     final day = int.tryParse(parts[2]) ?? 0;
     if (year < 1900 || year > DateTime.now().year || month < 1 || month > 12 || day < 1 || day > 31) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid Date of Birth'),
-          backgroundColor: AppColors.errorRed,
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Invalid Input',
+          message: 'Please enter a valid Date of Birth.',
+          actionText: 'Okay',
         ),
       );
       return;
@@ -104,10 +117,19 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         );
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Signup Error',
+            message: 'An unexpected error occurred during signup.',
+            actionText: 'Retry',
+          ),
         );
       }
     } finally {

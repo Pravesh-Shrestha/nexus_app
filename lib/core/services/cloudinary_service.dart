@@ -3,13 +3,18 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:nexus_app/core/config/cloudinary_config.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
 
 class CloudinaryService {
   Future<String?> uploadImage(File file) async {
     if (CloudinaryConfig.cloudName.isEmpty ||
         CloudinaryConfig.apiKey.isEmpty ||
         CloudinaryConfig.apiSecret.isEmpty) {
-      throw 'Cloudinary credentials are not fully configured in cloudinary_config.dart.';
+      throw AppException(
+        title: 'Configuration Error',
+        message: 'Cloudinary credentials are not fully configured.',
+        actionText: 'Contact Support',
+      );
     }
 
     try {
@@ -40,11 +45,21 @@ class CloudinaryService {
         final jsonDecoded = jsonDecode(responseData);
         return jsonDecoded['secure_url'] as String?;
       } else {
-        final errorResponse = await response.stream.bytesToString();
-        throw 'Cloudinary API error. Code: ${response.statusCode}, Body: $errorResponse';
+        throw AppException(
+          title: 'Upload Failed',
+          message: 'Cloudinary API error. Please try again.',
+          actionText: 'Retry',
+        );
       }
     } catch (e) {
-      throw 'Cloudinary Upload Failure: $e';
+    } on AppException {
+      rethrow;
+    } catch (e) {
+      throw AppException(
+        title: 'Upload Failed',
+        message: 'Cloudinary Upload Failure. Please check your connection.',
+        actionText: 'Retry',
+      );
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/auth/data/user_settings_model.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -26,9 +27,13 @@ class AuthService {
       );
       return credential;
     } on FirebaseAuthException catch (e) {
-      throw _handleFirebaseError(e);
+      throw _handleFirebaseError('Sign Up Failed', e);
     } catch (e) {
-      throw 'An unexpected error occurred. Please try again.';
+      throw AppException(
+        title: 'Sign Up Failed',
+        message: 'An unexpected error occurred. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -44,9 +49,13 @@ class AuthService {
       );
       return credential;
     } on FirebaseAuthException catch (e) {
-      throw _handleFirebaseError(e);
+      throw _handleFirebaseError('Login Failed', e);
     } catch (e) {
-      throw 'An unexpected error occurred. Please try again.';
+      throw AppException(
+        title: 'Login Failed',
+        message: 'An unexpected error occurred. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -73,9 +82,13 @@ class AuthService {
       // Once signed in, return the UserCredential
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
-      throw _handleFirebaseError(e);
+      throw _handleFirebaseError('Google Sign-In Failed', e);
     } catch (e) {
-      throw 'An error occurred during Google Sign-In.';
+      throw AppException(
+        title: 'Google Sign-In Failed',
+        message: 'An error occurred during Google Sign-In. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -93,7 +106,11 @@ class AuthService {
           .doc(user.uid)
           .set(user.toJson(), SetOptions(merge: true));
     } catch (e) {
-      throw 'Failed to save profile. Please try again.';
+      throw AppException(
+        title: 'Profile Save Failed',
+        message: 'Failed to save profile. Please check your internet connection and try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -106,7 +123,11 @@ class AuthService {
       }
       return null;
     } catch (e) {
-      throw 'Failed to load profile. Please try again.';
+      throw AppException(
+        title: 'Profile Load Failed',
+        message: 'Failed to load profile. Please pull down to refresh or check your internet connection.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -131,7 +152,11 @@ class AuthService {
           .doc(settings.uid)
           .set(settings.toJson(), SetOptions(merge: true));
     } catch (e) {
-      throw 'Failed to update user settings. Please try again.';
+      throw AppException(
+        title: 'Settings Update Failed',
+        message: 'Failed to update user settings. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -158,31 +183,57 @@ class AuthService {
       await user.updatePassword(newPassword);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        throw 'The current password you entered is incorrect.';
+        throw AppException(
+          title: 'Update Password Failed',
+          message: 'The current password you entered is incorrect.',
+          actionText: 'Try Again',
+        );
       }
-      throw _handleFirebaseError(e);
+      throw _handleFirebaseError('Update Password Failed', e);
     } catch (e) {
-      throw 'An error occurred while updating the password.';
+      throw AppException(
+        title: 'Update Password Failed',
+        message: 'An error occurred while updating the password.',
+        actionText: 'Retry',
+      );
     }
   }
 
   // Helper method to map Firebase errors to human-readable strings
-  String _handleFirebaseError(FirebaseAuthException e) {
+  AppException _handleFirebaseError(String title, FirebaseAuthException e) {
+    String message;
+    String actionText = 'Try Again';
+    
     switch (e.code) {
       case 'user-not-found':
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Invalid email or password.';
+        message = 'Invalid email or password.';
+        actionText = 'Check Credentials';
+        break;
       case 'email-already-in-use':
-        return 'An account already exists for that email.';
+        message = 'An account already exists for that email.';
+        actionText = 'Go to Login';
+        break;
       case 'weak-password':
-        return 'Please enter a stronger password.';
+        message = 'Please enter a stronger password.';
+        break;
       case 'invalid-email':
-        return 'Please enter a valid email address.';
+        message = 'Please enter a valid email address.';
+        break;
       case 'network-request-failed':
-        return 'Network error. Please check your internet connection.';
+        message = 'Network error. Please check your internet connection.';
+        actionText = 'Check Connection';
+        break;
       default:
-        return e.message ?? 'Authentication failed. Please try again.';
+        message = e.message ?? 'Authentication failed. Please try again.';
+        break;
     }
+    
+    return AppException(
+      title: title,
+      message: message,
+      actionText: actionText,
+    );
   }
 }

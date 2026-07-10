@@ -8,6 +8,8 @@ import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
 import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -95,14 +97,26 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             }
           } else {
-            throw 'No cached credentials found. Please log in with password once first.';
-          }
+          throw AppException(
+            title: 'Biometric Failed',
+            message: 'No cached credentials found. Please log in with your password once first.',
+            actionText: 'Understood',
+          );
         }
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Biometric Login Error: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Biometric Login Error',
+            message: 'An unexpected error occurred during biometric login.',
+            actionText: 'Retry',
+          ),
         );
       }
     } finally {
@@ -121,8 +135,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email and password')),
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Missing Fields',
+          message: 'Please enter both your email and password.',
+          actionText: 'Okay',
+        ),
       );
       return;
     }
@@ -142,10 +161,19 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (_) => const MainLayout()),
         );
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Login Error',
+            message: 'An unexpected error occurred.',
+            actionText: 'Retry',
+          ),
         );
       }
     } finally {
@@ -164,10 +192,19 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (_) => const MainLayout()),
         );
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Google Login Error',
+            message: 'An unexpected error occurred.',
+            actionText: 'Retry',
+          ),
         );
       }
     } finally {
@@ -257,10 +294,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               onTap: () async {
                                 final email = emailController.text.trim();
                                 if (email.isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Please enter your email'),
-                                      backgroundColor: AppColors.errorRed,
+                                  CustomSnackBar.showErrorSnackBar(
+                                    context,
+                                    AppException(
+                                      title: 'Invalid Input',
+                                      message: 'Please enter your email address.',
+                                      actionText: 'Okay',
                                     ),
                                   );
                                   return;
@@ -271,28 +310,31 @@ class _LoginScreenState extends State<LoginScreen> {
                                   await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
                                   if (context.mounted) {
                                     Navigator.of(context).pop();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Password reset link sent successfully!'),
-                                        backgroundColor: AppColors.successGreen,
-                                      ),
+                                    CustomSnackBar.showSuccessSnackBar(
+                                      context,
+                                      title: 'Link Sent',
+                                      message: 'Password reset link sent successfully!',
                                     );
                                   }
                                 } on FirebaseAuthException catch (e) {
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(e.message ?? 'An error occurred. Please try again.'),
-                                        backgroundColor: AppColors.errorRed,
+                                    CustomSnackBar.showErrorSnackBar(
+                                      context,
+                                      AppException(
+                                        title: 'Failed to Send',
+                                        message: e.message ?? 'An error occurred while sending the reset link.',
+                                        actionText: 'Try Again',
                                       ),
                                     );
                                   }
                                 } catch (e) {
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(e.toString()),
-                                        backgroundColor: AppColors.errorRed,
+                                    CustomSnackBar.showErrorSnackBar(
+                                      context,
+                                      AppException(
+                                        title: 'Reset Error',
+                                        message: 'An unexpected error occurred.',
+                                        actionText: 'Try Again',
                                       ),
                                     );
                                   }

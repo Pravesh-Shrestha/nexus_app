@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/community/data/community_model.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
 
 class CommunityService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -33,7 +34,11 @@ class CommunityService {
 
       await docRef.set(community.toJson());
     } catch (e) {
-      throw 'Failed to create community: $e';
+      throw AppException(
+        title: 'Creation Failed',
+        message: 'Failed to create community. Please check your internet connection and try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -44,7 +49,11 @@ class CommunityService {
         'memberUids': FieldValue.arrayUnion([uid]),
       });
     } catch (e) {
-      throw 'Failed to join community: $e';
+      throw AppException(
+        title: 'Join Failed',
+        message: 'Failed to join community. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -55,7 +64,11 @@ class CommunityService {
         'memberUids': FieldValue.arrayRemove([uid]),
       });
     } catch (e) {
-      throw 'Failed to leave community: $e';
+      throw AppException(
+        title: 'Leave Failed',
+        message: 'Failed to leave community. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 }

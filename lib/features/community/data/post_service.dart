@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/community/data/post_model.dart';
 import 'package:nexus_app/features/community/data/comment_model.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
 
 class PostService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -46,7 +47,11 @@ class PostService {
 
       await docRef.set(post.toJson());
     } catch (e) {
-      throw 'Failed to create post: $e';
+      throw AppException(
+        title: 'Post Failed',
+        message: 'Failed to create post. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -69,7 +74,11 @@ class PostService {
         });
       }
     } catch (e) {
-      throw 'Failed to like post: $e';
+      throw AppException(
+        title: 'Action Failed',
+        message: 'Failed to like post. Please check your connection.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -92,7 +101,11 @@ class PostService {
         });
       }
     } catch (e) {
-      throw 'Failed to dislike post: $e';
+      throw AppException(
+        title: 'Action Failed',
+        message: 'Failed to dislike post. Please check your connection.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -131,7 +144,11 @@ class PostService {
 
       await docRef.set(comment.toJson());
     } catch (e) {
-      throw 'Failed to add comment: $e';
+      throw AppException(
+        title: 'Comment Failed',
+        message: 'Failed to add comment. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 }

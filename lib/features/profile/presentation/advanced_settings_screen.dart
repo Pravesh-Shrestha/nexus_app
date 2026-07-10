@@ -6,6 +6,8 @@ import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/data/user_settings_model.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class AdvancedSettingsScreen extends StatefulWidget {
   const AdvancedSettingsScreen({super.key});
@@ -71,7 +73,11 @@ class _AdvancedSettingsScreenState extends State<AdvancedSettingsScreen> {
       try {
         final isAvailable = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
         if (!isAvailable) {
-          throw 'Biometric hardware is not supported or configured on this device.';
+          throw AppException(
+            title: 'Biometrics Unavailable',
+            message: 'Biometric hardware is not supported or configured on this device.',
+            actionText: 'Understood',
+          );
         }
 
         final authenticated = await _localAuth.authenticate(
@@ -87,12 +93,25 @@ class _AdvancedSettingsScreenState extends State<AdvancedSettingsScreen> {
             _useBiometrics = true;
           });
         } else {
-          throw 'Authentication cancelled.';
+          throw AppException(
+            title: 'Authentication Cancelled',
+            message: 'Biometric authentication was cancelled.',
+            actionText: 'Okay',
+          );
+        }
+      } on AppException catch (e) {
+        if (mounted) {
+          CustomSnackBar.showErrorSnackBar(context, e);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to enable biometrics: $e'), backgroundColor: AppColors.errorRed),
+          CustomSnackBar.showErrorSnackBar(
+            context,
+            AppException(
+              title: 'Biometrics Failed',
+              message: 'Failed to enable biometrics. Please try again.',
+              actionText: 'Retry',
+            ),
           );
         }
       }

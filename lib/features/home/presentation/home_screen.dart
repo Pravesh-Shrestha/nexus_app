@@ -16,6 +16,8 @@ import 'package:nexus_app/features/event/data/event_service.dart';
 import 'package:nexus_app/features/explore/presentation/community_details_screen.dart';
 import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
 import 'package:nexus_app/features/home/presentation/main_layout.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -731,17 +733,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       GestureDetector(
-                        onTap: () {
+                        onTap: () async {
                           if (community.creatorId == _currentUserId) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('As the creator, you cannot leave this community.'), behavior: SnackBarBehavior.floating),
+                            CustomSnackBar.showErrorSnackBar(
+                              context,
+                              AppException(
+                                title: 'Cannot Leave Community',
+                                message: 'As the creator, you cannot leave this community.',
+                                actionText: 'Okay',
+                              ),
                             );
                             return;
                           }
-                          if (isJoined) {
-                            _communityService.leaveCommunity(community.id, _currentUserId);
-                          } else {
-                            _communityService.joinCommunity(community.id, _currentUserId);
+                          try {
+                            if (isJoined) {
+                              await _communityService.leaveCommunity(community.id, _currentUserId);
+                            } else {
+                              await _communityService.joinCommunity(community.id, _currentUserId);
+                            }
+                          } on AppException catch (e) {
+                            if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
+                          } catch (e) {
+                            if (mounted) {
+                              CustomSnackBar.showErrorSnackBar(
+                                context,
+                                AppException(
+                                  title: 'Action Failed',
+                                  message: 'Could not perform community action. Please try again.',
+                                  actionText: 'Retry',
+                                ),
+                              );
+                            }
                           }
                         },
                         child: Container(

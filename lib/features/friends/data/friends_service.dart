@@ -4,6 +4,7 @@ import 'package:nexus_app/features/friends/data/friend_request_model.dart';
 import 'package:nexus_app/features/home/data/notification_model.dart';
 import 'package:nexus_app/features/home/data/notification_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
 
 /// Pairs a UserModel with the associated FriendRequestModel.
 class FriendRequestEntry {
@@ -45,7 +46,11 @@ class FriendsService {
         'friendUids': FieldValue.arrayUnion([uid]),
       }, SetOptions(merge: true));
     } catch (e) {
-      throw 'Failed to add friend: $e';
+      throw AppException(
+        title: 'Add Friend Failed',
+        message: 'Failed to add friend. Please check your internet connection.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -58,7 +63,11 @@ class FriendsService {
         'friendUids': FieldValue.arrayRemove([uid]),
       }, SetOptions(merge: true));
     } catch (e) {
-      throw 'Failed to remove friend: $e';
+      throw AppException(
+        title: 'Remove Friend Failed',
+        message: 'Failed to remove friend. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -99,7 +108,11 @@ class FriendsService {
       );
       await _notificationService.sendNotification(receiverId, notification);
     } catch (e) {
-      throw 'Failed to send friend request: $e';
+      throw AppException(
+        title: 'Request Failed',
+        message: 'Failed to send friend request. Please check your connection.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -130,7 +143,11 @@ class FriendsService {
         }
       }
     } catch (e) {
-      throw 'Failed to accept friend request: $e';
+      throw AppException(
+        title: 'Action Failed',
+        message: 'Failed to accept friend request. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -160,7 +177,11 @@ class FriendsService {
         }
       }
     } catch (e) {
-      throw 'Failed to decline friend request: $e';
+      throw AppException(
+        title: 'Action Failed',
+        message: 'Failed to decline friend request. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -188,7 +209,11 @@ class FriendsService {
             receiverId, doc.id, 'cancelled');
       }
     } catch (e) {
-      throw 'Failed to cancel friend request: $e';
+      throw AppException(
+        title: 'Cancel Failed',
+        message: 'Failed to cancel friend request. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -254,7 +279,11 @@ class FriendsService {
       }
       return friends;
     } catch (e) {
-      throw 'Failed to load friends profiles: $e';
+      throw AppException(
+        title: 'Load Failed',
+        message: 'Failed to load friends profiles. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -286,7 +315,11 @@ class FriendsService {
       }
       return results;
     } catch (e) {
-      throw 'Failed to load received requests: $e';
+      throw AppException(
+        title: 'Load Failed',
+        message: 'Failed to load received requests. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -318,7 +351,11 @@ class FriendsService {
       }
       return results;
     } catch (e) {
-      throw 'Failed to load sent requests: $e';
+      throw AppException(
+        title: 'Load Failed',
+        message: 'Failed to load sent requests. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -365,7 +402,11 @@ class FriendsService {
           .where((user) => !excluded.contains(user.uid))
           .toList();
     } catch (e) {
-      throw 'Failed to load recommended players: $e';
+      throw AppException(
+        title: 'Load Failed',
+        message: 'Failed to load recommended players. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 }

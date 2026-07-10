@@ -14,6 +14,8 @@ import 'package:nexus_app/features/profile/presentation/edit_profile_screen.dart
 import 'package:nexus_app/features/profile/presentation/change_password_screen.dart';
 import 'package:nexus_app/features/profile/presentation/terms_privacy_screen.dart';
 import 'package:nexus_app/core/services/cloudinary_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -129,11 +131,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _userModel = updatedModel;
               _isLoading = false;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Avatar updated successfully!'),
-                backgroundColor: AppColors.successGreen,
-              ),
+            CustomSnackBar.showSuccessSnackBar(
+              context,
+              title: 'Success',
+              message: 'Avatar updated successfully!',
             );
           }
         } else {
@@ -142,13 +143,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           }
         }
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update avatar: $e'),
-            backgroundColor: AppColors.errorRed,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Avatar Update Failed',
+            message: 'Failed to update avatar. Please try again.',
+            actionText: 'Retry',
           ),
         );
       }

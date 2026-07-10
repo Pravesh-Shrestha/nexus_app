@@ -6,6 +6,8 @@ import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/auth/presentation/setup_success_screen.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final String fullName;
@@ -67,11 +69,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     } catch (e) {
       setState(() => _isCalibratingGps = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('GPS Access: $e. Simulating regional grid offset.'),
-            backgroundColor: AppColors.primaryPurple,
-            behavior: SnackBarBehavior.floating,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'GPS Access Failed',
+            message: 'GPS Access: $e. Simulating regional grid offset.',
+            actionText: 'Okay',
           ),
         );
       }
@@ -387,7 +390,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   );
 
                   final navigator = Navigator.of(context);
-                  final scaffoldMessenger = ScaffoldMessenger.of(context);
 
                   try {
                     await AuthService().saveUserData(userModel);
@@ -401,10 +403,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ),
                       );
                     }
+                  } on AppException catch (e) {
+                    if (mounted) {
+                      CustomSnackBar.showErrorSnackBar(context, e);
+                    }
                   } catch (e) {
                     if (mounted) {
-                      scaffoldMessenger.showSnackBar(
-                        SnackBar(content: Text('Failed to save profile: $e')),
+                      CustomSnackBar.showErrorSnackBar(
+                        context,
+                        AppException(
+                          title: 'Save Failed',
+                          message: 'Failed to save profile. Please try again.',
+                          actionText: 'Retry',
+                        ),
                       );
                     }
                   }

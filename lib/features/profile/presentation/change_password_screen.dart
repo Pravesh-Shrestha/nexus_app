@@ -6,6 +6,8 @@ import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
 import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/core/services/email_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -32,15 +34,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (_currentPasswordController.text.isEmpty ||
         _newPasswordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill out all fields')),
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Missing Information',
+          message: 'Please fill out all fields.',
+          actionText: 'Okay',
+        ),
       );
       return;
     }
 
     if (_newPasswordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('New passwords do not match')),
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Password Mismatch',
+          message: 'New passwords do not match.',
+          actionText: 'Check Again',
+        ),
       );
       return;
     }
@@ -71,20 +83,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password successfully updated'),
-            backgroundColor: AppColors.successGreen,
-          ),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Success',
+          message: 'Password successfully updated',
         );
         Navigator.of(context).pop();
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.errorRed,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Update Failed',
+            message: 'An unexpected error occurred.',
+            actionText: 'Retry',
           ),
         );
       }

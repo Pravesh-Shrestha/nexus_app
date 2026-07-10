@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/home/data/notification_model.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
 
 class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -42,7 +43,11 @@ class NotificationService {
         list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         return list;
       } catch (ex) {
-        throw 'Failed to get notifications: $ex';
+        throw AppException(
+          title: 'Load Failed',
+          message: 'Failed to load notifications. Please check your internet connection.',
+          actionText: 'Retry',
+        );
       }
     }
   }
@@ -62,7 +67,11 @@ class NotificationService {
 
       await docRef.set(finalNotification.toJson());
     } catch (e) {
-      throw 'Failed to send notification: $e';
+      throw AppException(
+        title: 'Action Failed',
+        message: 'Failed to send notification. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -82,7 +91,11 @@ class NotificationService {
       }
       await batch.commit();
     } catch (e) {
-      throw 'Failed to mark notifications as read: $e';
+      throw AppException(
+        title: 'Action Failed',
+        message: 'Failed to mark notifications as read.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -99,7 +112,11 @@ class NotificationService {
             'isRead': true,
           });
     } catch (e) {
-      throw 'Failed to update notification status: $e';
+      throw AppException(
+        title: 'Action Failed',
+        message: 'Failed to update notification status.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -113,7 +130,11 @@ class NotificationService {
           .doc(notificationId)
           .delete();
     } catch (e) {
-      throw 'Failed to delete notification: $e';
+      throw AppException(
+        title: 'Action Failed',
+        message: 'Failed to delete notification.',
+        actionText: 'Retry',
+      );
     }
   }
 }

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/chat/data/message_model.dart';
 import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -28,7 +29,11 @@ class ChatService {
       // 1. Enforce friend check
       final friendshipStatus = await _friendsService.getFriendshipStatus(currentUserId, otherUserId);
       if (friendshipStatus != 'friends') {
-        throw 'You must be mutual friends to send a message.';
+        throw AppException(
+          title: 'Action Denied',
+          message: 'You must be mutual friends to send a message.',
+          actionText: 'Find Allies',
+        );
       }
 
       // 2. Generate a deterministic chat ID by sorting UIDs alphabetically
@@ -47,8 +52,14 @@ class ChatService {
       }
 
       return chatId;
+    } on AppException {
+      rethrow;
     } catch (e) {
-      throw 'Failed to start chat: $e';
+      throw AppException(
+        title: 'Chat Failed',
+        message: 'Failed to start chat. Please try again.',
+        actionText: 'Retry',
+      );
     }
   }
 
@@ -58,7 +69,11 @@ class ChatService {
       // Check if participants of this chat are still friends
       final chatDoc = await _firestore.collection('chats').doc(chatId).get();
       if (!chatDoc.exists) {
-        throw 'Chat room does not exist.';
+        throw AppException(
+          title: 'Chat Error',
+          message: 'Chat room does not exist.',
+          actionText: 'Go Back',
+        );
       }
       final participants = List<String>.from(chatDoc.data()?['participants'] ?? []);
       final otherUserId = participants.firstWhere((id) => id != senderId, orElse: () => '');
@@ -66,7 +81,11 @@ class ChatService {
       if (otherUserId.isNotEmpty) {
         final friendshipStatus = await _friendsService.getFriendshipStatus(senderId, otherUserId);
         if (friendshipStatus != 'friends') {
-          throw 'You cannot send messages to users who are not in your friends list.';
+          throw AppException(
+            title: 'Message Blocked',
+            message: 'You cannot send messages to users who are not in your friends list.',
+            actionText: 'Understood',
+          );
         }
       }
 
@@ -98,8 +117,14 @@ class ChatService {
       }
 
       await _firestore.collection('chats').doc(chatId).update(updateData);
+    } on AppException {
+      rethrow;
     } catch (e) {
-      throw 'Failed to send message: $e';
+      throw AppException(
+        title: 'Send Failed',
+        message: 'Failed to send message. Please check your connection.',
+        actionText: 'Retry',
+      );
     }
   }
 
