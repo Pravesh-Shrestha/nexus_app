@@ -5,6 +5,8 @@ import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/event/data/event_service.dart';
 import 'package:nexus_app/features/community/data/community_service.dart';
 import 'package:nexus_app/features/community/data/community_model.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class CreateEventScreen extends StatefulWidget {
   final String currentUserId;
@@ -78,14 +80,20 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
         _longitude = position.longitude;
         _isPinningGps = false;
       });
+    } on AppException catch (e) {
+      setState(() => _isPinningGps = false);
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       setState(() => _isPinningGps = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('GPS Access: $e. Simulating regional grid offset.'),
-            backgroundColor: AppColors.primaryPurple,
-            behavior: SnackBarBehavior.floating,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'GPS Access Failed',
+            message: '$e. Simulating regional grid offset.',
+            actionText: 'Retry',
           ),
         );
       }
@@ -187,8 +195,13 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedDate == null || _selectedTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please pick a date and time'), backgroundColor: AppColors.errorRed),
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Missing Date/Time',
+          message: 'Please pick a date and time for the event.',
+          actionText: 'Okay',
+        ),
       );
       return;
     }
@@ -223,18 +236,26 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Event published successfully!'),
-            backgroundColor: AppColors.successGreen,
-          ),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Success',
+          message: 'Event published successfully!',
         );
         Navigator.pop(context);
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to publish: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Publish Failed',
+            message: 'Failed to publish event. Please try again.',
+            actionText: 'Retry',
+          ),
         );
       }
     } finally {

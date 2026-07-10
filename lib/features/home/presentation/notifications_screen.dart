@@ -5,6 +5,8 @@ import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/home/data/notification_model.dart';
 import 'package:nexus_app/features/home/data/notification_service.dart';
 import 'package:nexus_app/features/friends/data/friends_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -112,10 +114,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       try {
         await _notificationService.markAllAsRead(_currentUserId);
         await _loadNotifications();
+      } on AppException catch (e) {
+        if (mounted) {
+          CustomSnackBar.showErrorSnackBar(context, e);
+          setState(() {
+            _isLoading = false;
+          });
+        }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error marking read: $e'), backgroundColor: Colors.redAccent),
+          CustomSnackBar.showErrorSnackBar(
+            context,
+            AppException(
+              title: 'Failed to Mark Read',
+              message: 'Could not mark notifications as read. Please try again.',
+              actionText: 'Retry',
+            ),
           );
           setState(() {
             _isLoading = false;
@@ -143,11 +157,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           _mockNotifications[index]['isRead'] = true;
         }
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Mock request ${newStatus == 'accepted' ? 'accepted' : 'declined'} (Offline Demo)'),
-          backgroundColor: AppColors.statusOnline,
-        ),
+      CustomSnackBar.showSuccessSnackBar(
+        context,
+        title: 'Action Processed',
+        message: 'Mock request ${newStatus == 'accepted' ? 'accepted' : 'declined'} (Offline Demo)',
       );
       return;
     }
@@ -166,17 +179,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
       await _loadNotifications();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Friend request ${newStatus == 'accepted' ? 'accepted' : 'declined'}.'),
-            backgroundColor: AppColors.statusOnline,
-          ),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Success',
+          message: 'Friend request ${newStatus == 'accepted' ? 'accepted' : 'declined'}.',
         );
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+        setState(() {
+          _isLoading = false;
+        });
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update request: $e'), backgroundColor: Colors.redAccent),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Action Failed',
+            message: 'Failed to update friend request. Please try again.',
+            actionText: 'Retry',
+          ),
         );
         setState(() {
           _isLoading = false;

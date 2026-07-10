@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/services/cloudinary_service.dart';
 import 'package:nexus_app/features/community/data/community_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class CreateCommunityScreen extends StatefulWidget {
   final String currentUserId;
@@ -59,11 +61,21 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
           }
         });
       }
+    } on AppException catch (e) {
+      setState(() => _isUploadingImage = false);
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       setState(() => _isUploadingImage = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Image Selection Failed',
+            message: 'Failed to pick image. Please try again.',
+            actionText: 'Retry',
+          ),
         );
       }
     }
@@ -132,18 +144,26 @@ class _CreateCommunityScreenState extends State<CreateCommunityScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Community created successfully!'),
-            backgroundColor: AppColors.successGreen,
-          ),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Success',
+          message: 'Community created successfully!',
         );
         Navigator.pop(context);
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Creation Failed',
+            message: 'Failed to create community. Please try again.',
+            actionText: 'Retry',
+          ),
         );
       }
     } finally {

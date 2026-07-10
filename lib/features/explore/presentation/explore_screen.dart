@@ -12,6 +12,8 @@ import 'package:nexus_app/features/explore/presentation/create_event_screen.dart
 import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
 import 'package:nexus_app/features/explore/presentation/community_details_screen.dart';
 import 'package:nexus_app/features/home/presentation/main_layout.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -557,18 +559,35 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                   ),
                                   onPressed: () {
                                     if (community.creatorId == _currentUserId) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('As the creator, you cannot leave this community.'),
-                                          behavior: SnackBarBehavior.floating,
+                                      CustomSnackBar.showErrorSnackBar(
+                                        context,
+                                        AppException(
+                                          title: 'Cannot Leave Community',
+                                          message: 'As the creator, you cannot leave this community.',
+                                          actionText: 'Okay',
                                         ),
                                       );
                                       return;
                                     }
-                                    if (isJoined) {
-                                      _communityService.leaveCommunity(community.id, _currentUserId);
-                                    } else {
-                                      _communityService.joinCommunity(community.id, _currentUserId);
+                                    try {
+                                      if (isJoined) {
+                                        _communityService.leaveCommunity(community.id, _currentUserId);
+                                      } else {
+                                        _communityService.joinCommunity(community.id, _currentUserId);
+                                      }
+                                    } on AppException catch (e) {
+                                      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
+                                    } catch (e) {
+                                      if (mounted) {
+                                        CustomSnackBar.showErrorSnackBar(
+                                          context,
+                                          AppException(
+                                            title: 'Action Failed',
+                                            message: 'Could not perform community action. Please try again.',
+                                            actionText: 'Retry',
+                                          ),
+                                        );
+                                      }
                                     }
                                   },
                                   child: Text(
@@ -609,11 +628,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                 icon: const Icon(Icons.share_outlined, color: Colors.white60, size: 20),
                                 onPressed: () {
                                   Clipboard.setData(ClipboardData(text: 'https://nexusapp.com/community/${community.id}'));
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Community link copied to clipboard!'),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
+                                  CustomSnackBar.showSuccessSnackBar(
+                                    context,
+                                    title: 'Copied',
+                                    message: 'Community link copied to clipboard!',
                                   );
                                 },
                               ),
@@ -810,18 +828,35 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ),
                       onPressed: () {
                         if (event.organizerId == _currentUserId) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('As the organizer, you are always attending this event.'),
-                              behavior: SnackBarBehavior.floating,
+                          CustomSnackBar.showErrorSnackBar(
+                            context,
+                            AppException(
+                              title: 'Cannot RSVP',
+                              message: 'As the organizer, you are always attending this event.',
+                              actionText: 'Okay',
                             ),
                           );
                           return;
                         }
-                        if (isGoing) {
-                          _eventService.cancelRsvp(event.id, _currentUserId);
-                        } else {
-                          _eventService.rsvpToEvent(event.id, _currentUserId);
+                        try {
+                          if (isGoing) {
+                            _eventService.cancelRsvp(event.id, _currentUserId);
+                          } else {
+                            _eventService.rsvpToEvent(event.id, _currentUserId);
+                          }
+                        } on AppException catch (e) {
+                          if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
+                        } catch (e) {
+                          if (mounted) {
+                            CustomSnackBar.showErrorSnackBar(
+                              context,
+                              AppException(
+                                title: 'Action Failed',
+                                message: 'Could not update RSVP status. Please try again.',
+                                actionText: 'Retry',
+                              ),
+                            );
+                          }
                         }
                       },
                     ),
@@ -923,8 +958,13 @@ class _CreateSpaceSheetState extends State<_CreateSpaceSheet> {
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_isEventForm && _selectedDateTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a date and time for the event')),
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Missing Date/Time',
+          message: 'Please select a date and time for the event.',
+          actionText: 'Okay',
+        ),
       );
       return;
     }
@@ -952,17 +992,25 @@ class _CreateSpaceSheetState extends State<_CreateSpaceSheet> {
       
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isEventForm ? 'Event created successfully!' : 'Community created successfully!'),
-            backgroundColor: AppColors.successGreen,
-          ),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Success',
+          message: _isEventForm ? 'Event created successfully!' : 'Community created successfully!',
         );
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Creation Failed',
+            message: 'Failed to create. Please try again.',
+            actionText: 'Retry',
+          ),
         );
       }
     } finally {
