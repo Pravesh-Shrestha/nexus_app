@@ -5,6 +5,8 @@ import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/friends/presentation/view_friend_screen.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class FindAllyScreen extends StatefulWidget {
   const FindAllyScreen({super.key});
@@ -78,8 +80,14 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
         _currentUserId!,
       );
       await _loadData();
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
-      _showError('Failed to accept request');
+      _showError(AppException(
+        title: 'Action Failed',
+        message: 'Failed to accept request.',
+        actionText: 'Retry',
+      ));
     } finally {
       if (mounted) setState(() => _processingIds.remove(entry.request.id));
     }
@@ -93,8 +101,14 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
         _currentUserId!,
       );
       await _loadData();
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
-      _showError('Failed to decline request');
+      _showError(AppException(
+        title: 'Action Failed',
+        message: 'Failed to decline request.',
+        actionText: 'Retry',
+      ));
     } finally {
       if (mounted) setState(() => _processingIds.remove(entry.request.id));
     }
@@ -108,8 +122,14 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
         entry.request.receiverId,
       );
       await _loadData();
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
-      _showError('Failed to cancel request');
+      _showError(AppException(
+        title: 'Action Failed',
+        message: 'Failed to cancel request.',
+        actionText: 'Retry',
+      ));
     } finally {
       if (mounted) setState(() => _processingIds.remove(entry.request.id));
     }
@@ -124,22 +144,22 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
         player.uid,
       );
       await _loadData();
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
-      _showError('Failed to send request');
+      _showError(AppException(
+        title: 'Action Failed',
+        message: 'Failed to send request.',
+        actionText: 'Retry',
+      ));
     } finally {
       if (mounted) setState(() => _processingIds.remove(player.uid));
     }
   }
 
-  void _showError(String msg) {
+  void _showError(AppException exception) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: AppColors.errorRed,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    CustomSnackBar.showErrorSnackBar(context, exception);
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────

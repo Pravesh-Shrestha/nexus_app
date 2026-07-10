@@ -4,6 +4,8 @@ import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/community/data/post_model.dart';
 import 'package:nexus_app/features/community/data/comment_model.dart';
 import 'package:nexus_app/features/community/data/post_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class PostDetailsScreen extends StatefulWidget {
   final PostModel post;
@@ -52,13 +54,20 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         authorName: _currentUserName.isNotEmpty ? _currentUserName : 'Gamer',
         content: text,
       );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add comment: $e'), backgroundColor: AppColors.errorRed),
-        );
+      } on AppException catch (e) {
+        if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
+      } catch (e) {
+        if (mounted) {
+          CustomSnackBar.showErrorSnackBar(
+            context,
+            AppException(
+              title: 'Comment Failed',
+              message: 'Failed to add comment. Please try again.',
+              actionText: 'Retry',
+            ),
+          );
+        }
       }
-    }
   }
 
   String _formatTimeAgo(DateTime dateTime) {

@@ -7,6 +7,8 @@ import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/friends/presentation/view_friend_screen.dart';
 import 'package:nexus_app/features/event/data/event_model.dart';
 import 'package:nexus_app/features/event/data/event_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class EventDetailsScreen extends StatefulWidget {
   final EventModel event;
@@ -63,10 +65,18 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       } else {
         await _eventService.rsvpToEvent(widget.event.id, widget.currentUserId);
       }
+      }
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update RSVP: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'RSVP Failed',
+            message: 'Failed to update RSVP status.',
+            actionText: 'Retry',
+          ),
         );
       }
     }
@@ -111,14 +121,23 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
         await FirebaseFirestore.instance.collection('events').doc(widget.event.id).delete();
         if (mounted) {
           Navigator.pop(context); // pop organizer menu / details screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Event deleted successfully!'), backgroundColor: AppColors.successGreen),
+          CustomSnackBar.showSuccessSnackBar(
+            context,
+            title: 'Success',
+            message: 'Event deleted successfully!',
           );
         }
+      } on AppException catch (e) {
+        if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete: $e'), backgroundColor: AppColors.errorRed),
+          CustomSnackBar.showErrorSnackBar(
+            context,
+            AppException(
+              title: 'Delete Failed',
+              message: 'Failed to delete event. Please try again.',
+              actionText: 'Retry',
+            ),
           );
         }
       }
@@ -670,10 +689,12 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                                   ),
                                   onPressed: () {
                                     if (event.organizerId == widget.currentUserId) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('As the organizer, you are always attending this event.'),
-                                          backgroundColor: AppColors.errorRed,
+                                      CustomSnackBar.showErrorSnackBar(
+                                        context,
+                                        AppException(
+                                          title: 'Cannot RSVP',
+                                          message: 'As the organizer, you are always attending this event.',
+                                          actionText: 'Okay',
                                         ),
                                       );
                                       return;
@@ -698,11 +719,10 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                             GestureDetector(
                               onTap: () {
                                 Clipboard.setData(ClipboardData(text: 'https://nexusapp.com/event/${event.id}'));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Event link copied to clipboard!'),
-                                    backgroundColor: AppColors.successGreen,
-                                  ),
+                                CustomSnackBar.showSuccessSnackBar(
+                                  context,
+                                  title: 'Copied',
+                                  message: 'Event link copied to clipboard!',
                                 );
                               },
                               child: Container(
@@ -802,15 +822,27 @@ class _EditEventSheetState extends State<_EditEventSheet> {
       });
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event updated successfully!'), backgroundColor: AppColors.successGreen),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Success',
+          message: 'Event updated successfully!',
         );
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        CustomSnackBar.showErrorSnackBar(context, e);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Update Failed',
+            message: 'Failed to update event. Please try again.',
+            actionText: 'Retry',
+          ),
         );
       }
     }

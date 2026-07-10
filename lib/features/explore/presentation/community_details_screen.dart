@@ -15,6 +15,8 @@ import 'package:nexus_app/features/community/data/post_model.dart';
 import 'package:nexus_app/features/community/data/comment_model.dart';
 import 'package:nexus_app/features/community/data/post_service.dart';
 import 'package:nexus_app/features/explore/presentation/post_details_screen.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class CommunityDetailsScreen extends StatefulWidget {
   final CommunityModel community;
@@ -61,10 +63,17 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
       } else {
         await _communityService.joinCommunity(widget.community.id, _currentUserId);
       }
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Action Failed',
+            message: 'Could not perform community action.',
+            actionText: 'Retry',
+          ),
         );
       }
     }
@@ -95,14 +104,23 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
         await FirebaseFirestore.instance.collection('communities').doc(widget.community.id).delete();
         if (mounted) {
           Navigator.pop(context); // pop creator menu / details screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Community deleted successfully!'), backgroundColor: AppColors.successGreen),
+          CustomSnackBar.showSuccessSnackBar(
+            context,
+            title: 'Success',
+            message: 'Community deleted successfully!',
           );
         }
+      } on AppException catch (e) {
+        if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete: $e'), backgroundColor: AppColors.errorRed),
+          CustomSnackBar.showErrorSnackBar(
+            context,
+            AppException(
+              title: 'Delete Failed',
+              message: 'Failed to delete community. Please try again.',
+              actionText: 'Retry',
+            ),
           );
         }
       }
@@ -350,10 +368,12 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
                              ),
                              onPressed: () {
                                if (community.creatorId == _currentUserId) {
-                                 ScaffoldMessenger.of(context).showSnackBar(
-                                   const SnackBar(
-                                     content: Text('As the creator, you cannot leave this community.'),
-                                     backgroundColor: AppColors.errorRed,
+                                 CustomSnackBar.showErrorSnackBar(
+                                   context,
+                                   AppException(
+                                     title: 'Cannot Leave Community',
+                                     message: 'As the creator, you cannot leave this community.',
+                                     actionText: 'Okay',
                                    ),
                                  );
                                  return;
@@ -663,11 +683,10 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
                 GestureDetector(
                   onTap: () {
                     Clipboard.setData(ClipboardData(text: 'https://nexusapp.com/post/${post.id}'));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Post link copied to clipboard!'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
+                    CustomSnackBar.showSuccessSnackBar(
+                      context,
+                      title: 'Copied',
+                      message: 'Post link copied to clipboard!',
                     );
                   },
                   child: const Icon(Icons.share_outlined, color: Colors.white38, size: 15),
@@ -916,15 +935,27 @@ class _EditCommunitySheetState extends State<_EditCommunitySheet> {
       });
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Community updated successfully!'), backgroundColor: AppColors.successGreen),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Success',
+          message: 'Community updated successfully!',
         );
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        CustomSnackBar.showErrorSnackBar(context, e);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSaving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Update Failed',
+            message: 'Failed to update community.',
+            actionText: 'Retry',
+          ),
         );
       }
     }
@@ -1034,11 +1065,19 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
           }
         });
       }
+    } on AppException catch (e) {
+      setState(() => _isUploadingImage = false);
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
       setState(() => _isUploadingImage = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Image Selection Failed',
+            message: 'Failed to pick image.',
+            actionText: 'Retry',
+          ),
         );
       }
     }
@@ -1067,15 +1106,24 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post shared successfully!'), backgroundColor: AppColors.successGreen),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Success',
+          message: 'Post shared successfully!',
         );
         Navigator.pop(context);
       }
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to share post: $e'), backgroundColor: AppColors.errorRed),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Post Failed',
+            message: 'Failed to share post.',
+            actionText: 'Retry',
+          ),
         );
       }
     } finally {

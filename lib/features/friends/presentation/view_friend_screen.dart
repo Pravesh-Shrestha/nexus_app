@@ -7,6 +7,8 @@ import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/chat/presentation/chat_screen.dart';
 import 'package:nexus_app/features/chat/data/chat_service.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class ViewFriendScreen extends StatefulWidget {
   final Map<String, dynamic>? allyData;
@@ -106,15 +108,29 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
     try {
       await _friendsService.sendFriendRequest(_currentUserId, _currentUserUsername, targetId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Friend request sent!'), backgroundColor: AppColors.statusOnline),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Request Sent',
+          message: 'Friend request sent!',
         );
         _loadCurrentUserAndStatus();
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send request: $e'), backgroundColor: Colors.redAccent),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Request Failed',
+            message: 'Failed to send request.',
+            actionText: 'Retry',
+          ),
         );
         setState(() {
           _isLoading = false;
@@ -135,15 +151,29 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
       // Direct accept (since we are on profile, search notification automatically)
       await _friendsService.acceptFriendRequest(targetId, _currentUserId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Friend request accepted!'), backgroundColor: AppColors.statusOnline),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Accepted',
+          message: 'Friend request accepted!',
         );
         _loadCurrentUserAndStatus();
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to accept request: $e'), backgroundColor: Colors.redAccent),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Action Failed',
+            message: 'Failed to accept request.',
+            actionText: 'Retry',
+          ),
         );
         setState(() {
           _isLoading = false;
@@ -163,15 +193,29 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
     try {
       await _friendsService.declineFriendRequest(targetId, _currentUserId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Friend request declined.'), backgroundColor: Colors.white24),
+        CustomSnackBar.showSuccessSnackBar(
+          context,
+          title: 'Declined',
+          message: 'Friend request declined.',
         );
         _loadCurrentUserAndStatus();
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to decline request: $e'), backgroundColor: Colors.redAccent),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Action Failed',
+            message: 'Failed to decline request.',
+            actionText: 'Retry',
+          ),
         );
         setState(() {
           _isLoading = false;
@@ -186,10 +230,12 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
 
     // Check if they are friends
     if (_friendshipStatus != 'friends') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You must be mutual friends to send a message.'),
-          backgroundColor: Colors.orangeAccent,
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Cannot Message',
+          message: 'You must be mutual friends to send a message.',
+          actionText: 'Okay',
         ),
       );
       return;
@@ -231,10 +277,22 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
           ),
         );
       }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+        setState(() {
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to start chat: $e'), backgroundColor: Colors.redAccent),
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Chat Failed',
+            message: 'Failed to start chat.',
+            actionText: 'Retry',
+          ),
         );
         setState(() {
           _isLoading = false;
@@ -642,10 +700,12 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('You cannot message until they accept your friend request.'),
-                    backgroundColor: Colors.orangeAccent,
+                CustomSnackBar.showErrorSnackBar(
+                  context,
+                  AppException(
+                    title: 'Cannot Message',
+                    message: 'You cannot message until they accept your friend request.',
+                    actionText: 'Okay',
                   ),
                 );
               },
@@ -776,10 +836,12 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('You must add them as a friend before you can send a message.'),
-                    backgroundColor: Colors.orangeAccent,
+                CustomSnackBar.showErrorSnackBar(
+                  context,
+                  AppException(
+                    title: 'Cannot Message',
+                    message: 'You must add them as a friend before you can send a message.',
+                    actionText: 'Okay',
                   ),
                 );
               },

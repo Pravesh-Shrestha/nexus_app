@@ -16,6 +16,8 @@ import 'package:nexus_app/features/chat/presentation/chat_screen.dart';
 import 'package:nexus_app/features/event/data/event_model.dart';
 import 'package:nexus_app/features/event/data/event_service.dart';
 import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class FindAllyRadarScreen extends StatefulWidget {
   const FindAllyRadarScreen({super.key});
@@ -141,13 +143,18 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen> {
     } catch (e) {
       setState(() => _gpsUpdating = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('GPS: $e. Simulating regional server center.'),
-            backgroundColor: AppColors.primaryPurple,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        if (e is AppException) {
+           CustomSnackBar.showErrorSnackBar(context, e);
+        } else {
+           CustomSnackBar.showErrorSnackBar(
+             context,
+             AppException(
+               title: 'GPS Error',
+               message: '$e. Simulating regional server center.',
+               actionText: 'Retry',
+             ),
+           );
+        }
       }
       _mapController.move(LatLng(_userLat, _userLng), 14.0);
       await _loadData();
@@ -207,13 +214,16 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen> {
           ),
         );
       }
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start chat: $e'),
-            backgroundColor: AppColors.errorRed,
-            behavior: SnackBarBehavior.floating,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Chat Error',
+            message: 'Failed to start chat.',
+            actionText: 'Retry',
           ),
         );
       }
