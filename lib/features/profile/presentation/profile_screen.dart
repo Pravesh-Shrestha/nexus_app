@@ -16,6 +16,9 @@ import 'package:nexus_app/features/profile/presentation/terms_privacy_screen.dar
 import 'package:nexus_app/core/services/cloudinary_service.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/widgets/custom_snackbar.dart';
+import 'package:nexus_app/features/friends/data/friends_service.dart';
+import 'package:nexus_app/features/community/data/community_service.dart';
+import 'package:nexus_app/features/friends/presentation/user_lists_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -28,6 +31,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _userModel;
   UserSettingsModel? _userSettings;
   bool _isLoading = true;
+  final FriendsService _friendsService = FriendsService();
+  final CommunityService _communityService = CommunityService();
 
   @override
   void initState() {
@@ -384,9 +389,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24),
                 child: Row(
                   children: [
-                    Expanded(child: _buildStatBox('Friends', '1.2k')),
+                    Expanded(
+                      child: StreamBuilder(
+                        stream: _friendsService.getFriendsList(FirebaseAuth.instance.currentUser?.uid ?? ''),
+                        builder: (context, snapshot) {
+                          final count = snapshot.data?.friendUids.length ?? 0;
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UserListsScreen(
+                                    userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                                    userName: username,
+                                    initialShowCommunities: false,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: _buildStatBox('Friends', count.toString()),
+                          );
+                        }
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildStatBox('Communities', '42')),
+                    Expanded(
+                      child: StreamBuilder(
+                        stream: _communityService.getJoinedCommunities(FirebaseAuth.instance.currentUser?.uid ?? ''),
+                        builder: (context, snapshot) {
+                          final count = snapshot.data?.length ?? 0;
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UserListsScreen(
+                                    userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+                                    userName: username,
+                                    initialShowCommunities: true,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: _buildStatBox('Communities', count.toString()),
+                          );
+                        }
+                      ),
+                    ),
                   ],
                 ),
               ),

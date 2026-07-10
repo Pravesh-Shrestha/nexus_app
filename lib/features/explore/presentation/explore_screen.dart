@@ -482,21 +482,52 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ),
                       padding: const EdgeInsets.all(16),
                       alignment: Alignment.topLeft,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: badgeColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: badgeColor, width: 1),
-                        ),
-                        child: Text(
-                          badge,
-                          style: TextStyle(
-                            color: badgeColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 9,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: badgeColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: badgeColor, width: 1),
+                            ),
+                            child: Text(
+                              badge,
+                              style: TextStyle(
+                                color: badgeColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 9,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (community.creatorId == _currentUserId || isJoined)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: community.creatorId == _currentUserId
+                                    ? AppColors.primaryPurple.withValues(alpha: 0.15)
+                                    : AppColors.primaryCyan.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: community.creatorId == _currentUserId
+                                      ? AppColors.primaryPurple
+                                      : AppColors.primaryCyan,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                community.creatorId == _currentUserId ? 'OWNER' : 'MEMBER',
+                                style: TextStyle(
+                                  color: community.creatorId == _currentUserId
+                                      ? AppColors.primaryPurple
+                                      : AppColors.primaryCyan,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
 
@@ -542,85 +573,26 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               Expanded(
                                 child: ElevatedButton(
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: community.creatorId == _currentUserId
-                                        ? AppColors.primaryPurple.withValues(alpha: 0.2)
-                                        : (isJoined ? AppColors.surfaceHighlight : AppColors.successGreen),
-                                    foregroundColor: community.creatorId == _currentUserId
-                                        ? AppColors.primaryPurple
-                                        : (isJoined ? Colors.white60 : Colors.black),
+                                    backgroundColor: AppColors.primaryPurple,
+                                    foregroundColor: Colors.white,
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
-                                      side: community.creatorId == _currentUserId
-                                          ? const BorderSide(color: AppColors.primaryPurple, width: 1)
-                                          : (isJoined ? BorderSide(color: Colors.white.withValues(alpha: 0.1)) : BorderSide.none),
                                     ),
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
                                   onPressed: () {
-                                    if (community.creatorId == _currentUserId) {
-                                      CustomSnackBar.showErrorSnackBar(
-                                        context,
-                                        AppException(
-                                          title: 'Cannot Leave Community',
-                                          message: 'As the creator, you cannot leave this community.',
-                                          actionText: 'Okay',
-                                        ),
-                                      );
-                                      return;
-                                    }
-                                    try {
-                                      if (isJoined) {
-                                        _communityService.leaveCommunity(community.id, _currentUserId);
-                                      } else {
-                                        _communityService.joinCommunity(community.id, _currentUserId);
-                                      }
-                                    } on AppException catch (e) {
-                                      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
-                                    } catch (e) {
-                                      if (mounted) {
-                                        CustomSnackBar.showErrorSnackBar(
-                                          context,
-                                          AppException(
-                                            title: 'Action Failed',
-                                            message: 'Could not perform community action. Please try again.',
-                                            actionText: 'Retry',
-                                          ),
-                                        );
-                                      }
-                                    }
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => CommunityDetailsScreen(community: community),
+                                      ),
+                                    );
                                   },
-                                  child: Text(
-                                    community.creatorId == _currentUserId
-                                        ? 'Creator'
-                                        : (isJoined ? 'Leave Comm' : 'Join Comm'),
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  child: const Text(
+                                    'View Community',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.surfaceHighlight,
-                                  foregroundColor: Colors.white,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => CommunityDetailsScreen(community: community),
-                                    ),
-                                  );
-                                },
-                                child: const Text(
-                                  'View',
-                                  style: TextStyle(fontSize: 13),
                                 ),
                               ),
                               const SizedBox(width: 8),

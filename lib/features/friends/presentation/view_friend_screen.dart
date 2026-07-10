@@ -9,6 +9,7 @@ import 'package:nexus_app/features/chat/data/chat_service.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/widgets/custom_snackbar.dart';
+import 'package:nexus_app/features/friends/presentation/user_lists_screen.dart';
 
 class ViewFriendScreen extends StatefulWidget {
   final Map<String, dynamic>? allyData;
@@ -458,11 +459,39 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildStatCard('Friends', friendsCount),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => UserListsScreen(
+                                  userId: _getTargetUserId(),
+                                  userName: name,
+                                  initialShowCommunities: false,
+                                ),
+                              ),
+                            );
+                          },
+                          child: _buildStatCard('Friends', friendsCount),
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: _buildStatCard('Communities', communitiesCount),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => UserListsScreen(
+                                  userId: _getTargetUserId(),
+                                  userName: name,
+                                  initialShowCommunities: true,
+                                ),
+                              ),
+                            );
+                          },
+                          child: _buildStatCard('Communities', communitiesCount),
+                        ),
                       ),
                     ],
                   ),

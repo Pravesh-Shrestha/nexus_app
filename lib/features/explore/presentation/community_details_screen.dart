@@ -17,6 +17,7 @@ import 'package:nexus_app/features/community/data/post_service.dart';
 import 'package:nexus_app/features/explore/presentation/post_details_screen.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/widgets/custom_snackbar.dart';
+import 'package:nexus_app/features/friends/presentation/widgets/friendship_status_button.dart';
 
 class CommunityDetailsScreen extends StatefulWidget {
   final CommunityModel community;
@@ -338,7 +339,7 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  '${community.memberUids.length} members · 1.1k online',
+                                  '${community.memberUids.length} members',
                                   style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.4),
                                     fontSize: 12,
@@ -880,13 +881,22 @@ class MemberRow extends StatelessWidget {
                     ),
                   ],
                 ),
-                Text(
-                  matchPercent,
-                  style: const TextStyle(
-                    color: AppColors.successGreen,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      matchPercent,
+                      style: const TextStyle(
+                        color: AppColors.successGreen,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    FriendshipStatusButton(
+                      currentUserId: currentUserId,
+                      otherUserId: uid,
+                    ),
+                  ],
                 ),
               ],
             ),

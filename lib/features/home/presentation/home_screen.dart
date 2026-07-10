@@ -16,8 +16,6 @@ import 'package:nexus_app/features/event/data/event_service.dart';
 import 'package:nexus_app/features/explore/presentation/community_details_screen.dart';
 import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
 import 'package:nexus_app/features/home/presentation/main_layout.dart';
-import 'package:nexus_app/core/exceptions/app_exception.dart';
-import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -732,59 +730,32 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      GestureDetector(
-                        onTap: () async {
-                          if (community.creatorId == _currentUserId) {
-                            CustomSnackBar.showErrorSnackBar(
-                              context,
-                              AppException(
-                                title: 'Cannot Leave Community',
-                                message: 'As the creator, you cannot leave this community.',
-                                actionText: 'Okay',
-                              ),
-                            );
-                            return;
-                          }
-                          try {
-                            if (isJoined) {
-                              await _communityService.leaveCommunity(community.id, _currentUserId);
-                            } else {
-                              await _communityService.joinCommunity(community.id, _currentUserId);
-                            }
-                          } on AppException catch (e) {
-                            if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
-                          } catch (e) {
-                            if (mounted) {
-                              CustomSnackBar.showErrorSnackBar(
-                                context,
-                                AppException(
-                                  title: 'Action Failed',
-                                  message: 'Could not perform community action. Please try again.',
-                                  actionText: 'Retry',
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      if (community.creatorId == _currentUserId || isJoined)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: community.creatorId == _currentUserId
-                                ? AppColors.primaryPurple.withValues(alpha: 0.2)
-                                : (isJoined ? AppColors.surfaceHighlight : AppColors.primaryPurple),
-                            borderRadius: BorderRadius.circular(AppSizes.r16),
-                            border: community.creatorId == _currentUserId
-                                ? Border.all(color: AppColors.primaryPurple)
-                                : null,
+                                ? AppColors.primaryPurple.withValues(alpha: 0.15)
+                                : AppColors.primaryCyan.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: community.creatorId == _currentUserId
+                                  ? AppColors.primaryPurple
+                                  : AppColors.primaryCyan,
+                              width: 1,
+                            ),
                           ),
                           child: Text(
-                            community.creatorId == _currentUserId
-                                ? 'Creator'
-                                : (isJoined ? 'Leave Comm' : 'Join Comm'),
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            community.creatorId == _currentUserId ? 'OWNER' : 'MEMBER',
+                            style: TextStyle(
+                              color: community.creatorId == _currentUserId
+                                  ? AppColors.primaryPurple
+                                  : AppColors.primaryCyan,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ],

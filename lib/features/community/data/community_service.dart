@@ -14,6 +14,19 @@ class CommunityService {
     });
   }
 
+  // Stream of communities joined by user
+  Stream<List<CommunityModel>> getJoinedCommunities(String uid) {
+    return _firestore
+        .collection('communities')
+        .where('memberUids', arrayContains: uid)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => CommunityModel.fromJson(doc.data()))
+          .toList();
+    });
+  }
+
   // Create a community
   Future<void> createCommunity({
     required String name,
