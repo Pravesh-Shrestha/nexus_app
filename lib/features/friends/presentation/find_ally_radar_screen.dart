@@ -107,7 +107,13 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw 'Location services disabled.';
+        await Geolocator.openLocationSettings();
+        // Give a prompt so they know they need to turn it on
+        throw AppException(
+          title: 'GPS Disabled',
+          message: 'Location services are disabled. We have opened your device settings so you can enable GPS.',
+          actionText: 'Retry',
+        );
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
@@ -150,7 +156,7 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen> {
              context,
              AppException(
                title: 'GPS Error',
-               message: '$e. Simulating regional server center.',
+               message: '$e. Make sure location permission is granted and GPS is on.',
                actionText: 'Retry',
              ),
            );
@@ -233,8 +239,6 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen> {
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
-    
-    // User GPS reference center coordinates
     final LatLng centerLatLng = LatLng(_userLat, _userLng);
 
     // Build markers
@@ -274,20 +278,15 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen> {
       ),
     );
 
-    // 2. Friends or Events markers
+    // 2. Friends or Events markers (Skip rendering if no real coordinates exist)
     if (!_isEventsTab) {
       for (final friend in _friends) {
-        double fLat = _userLat;
-        double fLng = _userLng;
-        if (friend.latitude != null && friend.longitude != null) {
-          fLat = friend.latitude!;
-          fLng = friend.longitude!;
-        } else {
-          // Determinstic mock offsets nearby user
-          fLat = _userLat + ((friend.uid.hashCode % 100) - 50) * 0.00018;
-          fLng = _userLng + ((friend.uid.hashCode % 80) - 40) * 0.00022;
+        if (friend.latitude == null || friend.longitude == null || (friend.latitude == 0.0 && friend.longitude == 0.0)) {
+          continue; // Skip friends without valid GPS coordinates
         }
 
+        final double fLat = friend.latitude!;
+        final double fLng = friend.longitude!;
         final isSelected = _selectedFriend?.uid == friend.uid;
 
         mapMarkers.add(
@@ -334,17 +333,12 @@ class _FindAllyRadarScreenState extends State<FindAllyRadarScreen> {
     } else {
       // Events Layer
       for (final ev in _eventsList) {
-        double eLat = _userLat;
-        double eLng = _userLng;
-        if (ev.latitude != null && ev.longitude != null) {
-          eLat = ev.latitude!;
-          eLng = ev.longitude!;
-        } else {
-          // Determinstic mock offsets nearby user
-          eLat = _userLat + ((ev.id.hashCode % 100) - 50) * 0.00015;
-          eLng = _userLng + ((ev.id.hashCode % 80) - 40) * 0.00018;
+        if (ev.latitude == null || ev.longitude == null || (ev.latitude == 0.0 && ev.longitude == 0.0)) {
+          continue; // Skip events without valid GPS coordinates
         }
 
+        final double eLat = ev.latitude!;
+        final double eLng = ev.longitude!;
         final isSelected = _selectedEvent?.id == ev.id;
 
         mapMarkers.add(
