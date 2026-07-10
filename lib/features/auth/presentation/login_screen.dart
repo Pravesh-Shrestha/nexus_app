@@ -97,11 +97,12 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             }
           } else {
-          throw AppException(
-            title: 'Biometric Failed',
-            message: 'No cached credentials found. Please log in with your password once first.',
-            actionText: 'Understood',
-          );
+            throw AppException(
+              title: 'Biometric Failed',
+              message: 'No cached credentials found. Please log in with your password once first.',
+              actionText: 'Understood',
+            );
+          }
         }
       }
     } on AppException catch (e) {

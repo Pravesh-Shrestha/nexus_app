@@ -9,6 +9,8 @@ import 'package:nexus_app/features/chat/data/message_model.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/chat/presentation/widgets/chat_bubble.dart';
 import 'package:nexus_app/features/chat/presentation/widgets/chat_input_field.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -72,12 +74,16 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       await _chatService.sendMessage(widget.chatId, _currentUserId, text);
       _scrollToBottom();
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send message: $e'),
-            backgroundColor: AppColors.errorRed,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Message Failed',
+            message: 'Failed to send message.',
+            actionText: 'Retry',
           ),
         );
       }
@@ -94,12 +100,16 @@ class _ChatScreenState extends State<ChatScreen> {
         imageUrl: imageUrl,
       );
       _scrollToBottom();
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send image: $e'),
-            backgroundColor: AppColors.errorRed,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Image Failed',
+            message: 'Failed to send image.',
+            actionText: 'Retry',
           ),
         );
       }

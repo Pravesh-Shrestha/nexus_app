@@ -65,7 +65,6 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
       } else {
         await _eventService.rsvpToEvent(widget.event.id, widget.currentUserId);
       }
-      }
     } on AppException catch (e) {
       if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {

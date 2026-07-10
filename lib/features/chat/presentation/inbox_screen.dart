@@ -7,6 +7,8 @@ import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/chat/data/chat_service.dart';
 import 'package:nexus_app/features/chat/presentation/chat_screen.dart';
 import 'package:nexus_app/features/friends/presentation/find_ally_radar_screen.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class InboxScreen extends StatefulWidget {
   const InboxScreen({super.key});
@@ -64,13 +66,16 @@ class _InboxScreenState extends State<InboxScreen> {
           ),
         );
       }
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start chat: $e'),
-            backgroundColor: AppColors.errorRed,
-            behavior: SnackBarBehavior.floating,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Chat Failed',
+            message: 'Failed to start chat.',
+            actionText: 'Retry',
           ),
         );
       }

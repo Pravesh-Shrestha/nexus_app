@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/services/cloudinary_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 import 'emoji_picker_sheet.dart';
 
 class ChatInputField extends StatefulWidget {
@@ -110,12 +112,16 @@ class _ChatInputFieldState extends State<ChatInputField> {
           widget.onImageSent(cloudinaryUrl);
         }
       }
+    } on AppException catch (e) {
+      if (mounted) CustomSnackBar.showErrorSnackBar(context, e);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to upload image: $e'),
-            backgroundColor: AppColors.errorRed,
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Upload Failed',
+            message: 'Failed to upload image.',
+            actionText: 'Retry',
           ),
         );
       }

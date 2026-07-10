@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 class CustomSnackBar {
   static void showErrorSnackBar(BuildContext context, AppException exception) {
@@ -11,7 +10,7 @@ class CustomSnackBar {
       message: exception.message,
       actionText: exception.actionText,
       onAction: exception.onAction,
-      icon: LucideIcons.alertTriangle,
+      icon: Icons.warning_rounded,
       color: AppColors.errorRed,
     );
   }
@@ -21,7 +20,7 @@ class CustomSnackBar {
       context: context,
       title: title,
       message: message,
-      icon: LucideIcons.checkCircle,
+      icon: Icons.check_circle_rounded,
       color: AppColors.successGreen,
     );
   }
@@ -116,7 +115,7 @@ class CustomSnackBar {
               GestureDetector(
                 onTap: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
                 child: const Icon(
-                  LucideIcons.x,
+                  Icons.close_rounded,
                   color: AppColors.textMuted,
                   size: 20,
                 ),
