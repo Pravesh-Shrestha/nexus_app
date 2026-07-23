@@ -124,25 +124,25 @@ class _InboxScreenState extends State<InboxScreen> {
                     children: [
                       Row(
                         children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: Image.asset(
-                              'assets/images/splash/Frame.png',
-                              width: 26,
-                              height: 26,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'NEXUS',
-                            style: TextStyle(
-                              color: AppColors.primaryCyan,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
+                           ClipRRect(
+                             borderRadius: BorderRadius.circular(6),
+                             child: Image.asset(
+                               'assets/images/splash/Frame.png',
+                               width: 32,
+                               height: 32,
+                               fit: BoxFit.cover,
+                             ),
+                           ),
+                           const SizedBox(width: 10),
+                           const Text(
+                             'Nexus',
+                             style: TextStyle(
+                               color: AppColors.primaryPurple,
+                               fontSize: 24,
+                               fontWeight: FontWeight.bold,
+                               letterSpacing: 1.2,
+                             ),
+                           ),
                         ],
                       ),
                       IconButton(

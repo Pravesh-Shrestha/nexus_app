@@ -110,7 +110,7 @@ flutter:
 
 flutter_native_splash:
   color: "#0F1014"
-  image: assets/splash/Frame.png
-  branding: assets/splash/Container.png
+  image: assets/images/splash/Frame.png
+  branding: assets/images/splash/Container.png
   android: true
   ios: true

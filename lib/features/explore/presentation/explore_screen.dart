@@ -156,17 +156,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         borderRadius: BorderRadius.circular(6),
                         child: Image.asset(
                           'assets/images/splash/Frame.png',
-                          width: 26,
-                          height: 26,
+                          width: 32,
+                          height: 32,
                           fit: BoxFit.cover,
                         ),
                       ),
                       const SizedBox(width: 10),
                       const Text(
-                        'NEXUS',
+                        'Nexus',
                         style: TextStyle(
-                          color: AppColors.primaryCyan,
-                          fontSize: 22,
+                          color: AppColors.primaryPurple,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.2,
                         ),

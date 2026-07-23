@@ -145,8 +145,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   borderRadius: BorderRadius.circular(6),
                                   child: Image.asset(
                                     'assets/images/splash/Frame.png',
-                                    width: 28,
-                                    height: 28,
+                                    width: 32,
+                                    height: 32,
                                     fit: BoxFit.cover,
                                   ),
                                 ),
