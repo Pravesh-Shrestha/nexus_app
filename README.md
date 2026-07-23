@@ -43,6 +43,9 @@ Nexus is a Flutter-based mobile application designed for gamers. It provides a p
   - **Dynamic Interactive Blips**: Places active friend nodes (avatars) on the scanner based on actual coordinate offsets, falling back to deterministic mock coordinates to ensure the grid remains populated.
   - **GPS Calibration**: Allows users to post their own live simulated GPS coordinates to Firestore via a tactical sync action.
   - **Bottom Carousel Detail Card**: Selecting a blip displays detailed ally cards showing distance, roles, custom gaming tags, profile view navigation, and direct chat triggers.
+- **Offline Data & Image Caching Persistence**:
+  - **Firestore Offline Caching**: Automatically enables local cache persistence on app startup, allowing instant screen loads for chats, feeds, profiles, and communities.
+  - **Image Caching Hub**: Implements an optimized image loading pipeline via `AppNetworkImage` wrapping `cached_network_image` to cache banners, user avatars, and media files directly on-device.
 
 ## Getting Started
 

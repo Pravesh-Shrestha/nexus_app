@@ -6,6 +6,8 @@ import 'package:nexus_app/features/home/presentation/main_layout.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/features/auth/presentation/biometric_lock_screen.dart';
 
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -17,6 +19,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    FlutterNativeSplash.remove();
     // Check auth status after the animation delay
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
