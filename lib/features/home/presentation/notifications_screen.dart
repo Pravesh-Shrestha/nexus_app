@@ -146,6 +146,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  Future<void> _deleteNotification(String id) async {
+    final isMock = id.startsWith('mock_');
+    if (isMock) {
+      setState(() {
+        _mockNotifications.removeWhere((item) => item['id'] == id);
+      });
+      return;
+    }
+    if (_currentUserId.isEmpty) return;
+    try {
+      await _notificationService.deleteNotification(_currentUserId, id);
+      await _loadNotifications();
+    } catch (_) {}
+  }
+
   Future<void> _handleFriendRequest(String id, String relatedId, String newStatus) async {
     final isMock = id.startsWith('mock_');
 
@@ -407,155 +422,169 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         break;
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+    return Dismissible(
+      key: Key(id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: AppColors.errorRed.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Icon(Icons.delete_outline, color: AppColors.errorRed),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Icon Avatar
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: iconBgColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: iconText != null
-                        ? Text(
-                            iconText,
-                            style: TextStyle(
-                              color: iconColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          )
-                        : Icon(
-                            icon,
-                            color: iconColor,
-                            size: 22,
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                
-                // Content text
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item['title'] as String,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          height: 1.3,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        item['time'] as String,
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Unread Blue Dot
-                if (!isRead)
+      onDismissed: (_) => _deleteNotification(id),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon Avatar
                   Container(
-                    margin: const EdgeInsets.only(left: 8, top: 4),
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryCyan,
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: iconBgColor,
                       shape: BoxShape.circle,
                     ),
-                  ),
-              ],
-            ),
-            
-            // Action buttons if it is a pending friend request
-            if (isFriendRequest) ...[
-              if (status == 'pending') ...[
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.only(left: 58),
-                  child: Row(
-                    children: [
-                      // Accept Button
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.statusOnline,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        onPressed: () => _handleFriendRequest(id, relatedId, 'accepted'),
-                        child: const Text(
-                          'Accept',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Decline Button
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white70,
-                          side: const BorderSide(color: Colors.white12),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onPressed: () => _handleFriendRequest(id, relatedId, 'declined'),
-                        child: const Text(
-                          'Decline',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                const SizedBox(height: 16),
-                Padding(
-                  padding: const EdgeInsets.only(left: 58),
-                  child: Text(
-                    status == 'accepted' ? 'Request Accepted' : 'Request Declined',
-                    style: TextStyle(
-                      color: status == 'accepted' ? AppColors.statusOnline : Colors.white30,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+                    child: Center(
+                      child: iconText != null
+                          ? Text(
+                              iconText,
+                              style: TextStyle(
+                                color: iconColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            )
+                          : Icon(
+                              icon,
+                              color: iconColor,
+                              size: 22,
+                            ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 14),
+                  
+                  // Content text
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['title'] as String,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          item['time'] as String,
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Unread Blue Dot
+                  if (!isRead)
+                    Container(
+                      margin: const EdgeInsets.only(left: 8, top: 4),
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryCyan,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+              
+              // Action buttons if it is a pending friend request
+              if (isFriendRequest) ...[
+                if (status == 'pending') ...[
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 58),
+                    child: Row(
+                      children: [
+                        // Accept Button
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.statusOnline,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () => _handleFriendRequest(id, relatedId, 'accepted'),
+                          child: const Text(
+                            'Accept',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // Decline Button
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white70,
+                            side: const BorderSide(color: Colors.white12),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () => _handleFriendRequest(id, relatedId, 'declined'),
+                          child: const Text(
+                            'Decline',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 58),
+                    child: Text(
+                      status == 'accepted' ? 'Request Accepted' : 'Request Declined',
+                      style: TextStyle(
+                        color: status == 'accepted' ? AppColors.statusOnline : Colors.white30,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ],
-          ],
+          ),
         ),
       ),
     );
