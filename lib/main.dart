@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:nexus_app/firebase_options.dart';
+import 'package:nexus_app/core/services/push_notification_service.dart';
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +14,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await PushNotificationService.initialize();
 
   // Enable offline cache persistence for firestore
   FirebaseFirestore.instance.settings = const Settings(

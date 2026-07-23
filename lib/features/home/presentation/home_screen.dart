@@ -16,6 +16,7 @@ import 'package:nexus_app/features/event/data/event_service.dart';
 import 'package:nexus_app/features/explore/presentation/community_details_screen.dart';
 import 'package:nexus_app/features/explore/presentation/event_details_screen.dart';
 import 'package:nexus_app/features/home/presentation/main_layout.dart';
+import 'package:nexus_app/core/services/push_notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -49,6 +50,10 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _currentUserId = user.uid;
+      // Setup push notification tokens and permissions asynchronously
+      PushNotificationService.requestPermissions().then((_) {
+        PushNotificationService.getAndSaveToken(user.uid);
+      });
       try {
         final results = await Future.wait([
           _authService.getUserData(user.uid),
