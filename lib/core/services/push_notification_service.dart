@@ -1,8 +1,13 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:nexus_app/main.dart';
+import 'package:nexus_app/features/home/presentation/notifications_screen.dart';
+import 'package:nexus_app/features/chat/presentation/inbox_screen.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -22,6 +27,22 @@ class PushNotificationService {
     playSound: true,
   );
 
+  static void _handleNotificationTap(Map<String, dynamic> data) {
+    debugPrint('Processing notification tap payload: $data');
+    final String type = data['type'] ?? '';
+    
+    // Perform routing based on notification type
+    if (type == 'friend_request' || type == 'invite' || type == 'mention') {
+      MyApp.navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+      );
+    } else if (type == 'chat') {
+      MyApp.navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const InboxScreen()),
+      );
+    }
+  }
+
   static Future<void> initialize() async {
     // 1. Set up Background Message Handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -34,7 +55,14 @@ class PushNotificationService {
     await _localNotificationsPlugin.initialize(
       settings: initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        debugPrint('Notification tapped: ${response.payload}');
+        if (response.payload != null) {
+          try {
+            final Map<String, dynamic> data = jsonDecode(response.payload!);
+            _handleNotificationTap(data);
+          } catch (e) {
+            debugPrint('Error decoding notification payload: $e');
+          }
+        }
       },
     );
 
@@ -66,12 +94,24 @@ class PushNotificationService {
               playSound: true,
             ),
           ),
-          payload: message.data.toString(),
+          payload: jsonEncode(message.data),
         );
       }
     });
 
-    // 4. Handle token refresh
+    // 4. Handle Notification Tap when App is in Background
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _handleNotificationTap(message.data);
+    });
+
+    // 5. Handle Notification Tap when App was opened from Terminated State
+    _firebaseMessaging.getInitialMessage().then((RemoteMessage? message) {
+      if (message != null) {
+        _handleNotificationTap(message.data);
+      }
+    });
+
+    // 6. Handle token refresh
     _firebaseMessaging.onTokenRefresh.listen((newToken) {
       debugPrint('FCM Token Refreshed: $newToken');
     });
