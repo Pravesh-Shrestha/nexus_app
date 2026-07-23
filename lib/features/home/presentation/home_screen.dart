@@ -47,9 +47,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user != null) {
       _currentUserId = user.uid;
       try {
-        final data = await _authService.getUserData(user.uid);
-        final friendsList = await _friendsService.getFriendsProfiles(user.uid);
-        final recommendedList = await _friendsService.getRecommendedPlayers(user.uid);
+        final results = await Future.wait([
+          _authService.getUserData(user.uid),
+          _friendsService.getFriendsProfiles(user.uid),
+          _friendsService.getRecommendedPlayers(user.uid),
+        ]);
+        final data = results[0] as UserModel?;
+        final friendsList = results[1] as List<UserModel>;
+        final recommendedList = results[2] as List<UserModel>;
         
         if (mounted) {
           setState(() {

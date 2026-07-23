@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:nexus_app/core/utils/firestore_cache_extension.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/auth/data/user_settings_model.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
@@ -117,7 +118,7 @@ class AuthService {
   // Get User Data from Firestore
   Future<UserModel?> getUserData(String uid) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final doc = await FirebaseFirestore.instance.collection('users').doc(uid).getCacheFirst();
       if (doc.exists && doc.data() != null) {
         return UserModel.fromJson(doc.data()!);
       }

@@ -20,7 +20,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     FlutterNativeSplash.remove();
-    // Check auth status after the animation delay
+    // Check auth status after the animation delay of 3 seconds
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
         final authService = AuthService();

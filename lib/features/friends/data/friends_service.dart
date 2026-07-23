@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/friends/data/friends_model.dart';
+import 'package:nexus_app/core/utils/firestore_cache_extension.dart';
 import 'package:nexus_app/features/friends/data/friend_request_model.dart';
 import 'package:nexus_app/features/home/data/notification_model.dart';
 import 'package:nexus_app/features/home/data/notification_service.dart';
@@ -30,7 +31,7 @@ class FriendsService {
   }
 
   Future<FriendsModel> getFriendsListFuture(String uid) async {
-    final doc = await _firestore.collection('friends').doc(uid).get();
+    final doc = await _firestore.collection('friends').doc(uid).getCacheFirst();
     if (doc.exists && doc.data() != null) {
       return FriendsModel.fromJson(doc.data()!);
     }
@@ -270,11 +271,17 @@ class FriendsService {
       if (friendsModel.friendUids.isEmpty) return [];
 
       final List<UserModel> friends = [];
-      for (var uid in friendsModel.friendUids.take(30)) {
-        final userDoc =
-            await _firestore.collection('users').doc(uid).get();
+      final fetches = friendsModel.friendUids.take(30).map((uid) async {
+        final userDoc = await _firestore.collection('users').doc(uid).getCacheFirst();
         if (userDoc.exists && userDoc.data() != null) {
-          friends.add(UserModel.fromJson(userDoc.data()!));
+          return UserModel.fromJson(userDoc.data()!);
+        }
+        return null;
+      });
+      final results = await Future.wait(fetches);
+      for (var user in results) {
+        if (user != null) {
+          friends.add(user);
         }
       }
       return friends;
