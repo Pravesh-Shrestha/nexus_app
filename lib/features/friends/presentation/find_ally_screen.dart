@@ -7,6 +7,7 @@ import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/friends/presentation/view_friend_screen.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/widgets/custom_snackbar.dart';
+import 'package:nexus_app/features/friends/presentation/find_ally_radar_screen.dart';
 
 class FindAllyScreen extends StatefulWidget {
   const FindAllyScreen({super.key});
@@ -389,24 +390,31 @@ class _FindAllyScreenState extends State<FindAllyScreen> {
           Padding(
             padding: const EdgeInsets.only(right: AppSizes.p24),
             child: Center(
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.surfaceHighlight,
-                  border: Border.all(
-                      color: AppColors.primaryCyan.withValues(alpha: 0.2),
-                      width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryCyan.withValues(alpha: 0.15),
-                      blurRadius: 10,
-                    ),
-                  ],
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const FindAllyRadarScreen()),
+                  );
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.surfaceHighlight,
+                    border: Border.all(
+                        color: AppColors.primaryCyan.withValues(alpha: 0.2),
+                        width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryCyan.withValues(alpha: 0.15),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.map_outlined,
+                      color: AppColors.primaryCyan, size: 18),
                 ),
-                child: const Icon(Icons.group_outlined,
-                    color: AppColors.primaryCyan, size: 18),
               ),
             ),
           ),
