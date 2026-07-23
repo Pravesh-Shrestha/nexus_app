@@ -141,7 +141,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.gamepad, color: AppColors.primaryPurple),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Image.asset(
+                                    'assets/images/splash/Frame.png',
+                                    width: 28,
+                                    height: 28,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Nexus',

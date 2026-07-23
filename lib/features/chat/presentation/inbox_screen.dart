@@ -124,16 +124,13 @@ class _InboxScreenState extends State<InboxScreen> {
                     children: [
                       Row(
                         children: [
-                          // Hollow logo circle matching the design
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.primaryCyan,
-                                width: 2,
-                              ),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.asset(
+                              'assets/images/splash/Frame.png',
+                              width: 26,
+                              height: 26,
+                              fit: BoxFit.cover,
                             ),
                           ),
                           const SizedBox(width: 10),
