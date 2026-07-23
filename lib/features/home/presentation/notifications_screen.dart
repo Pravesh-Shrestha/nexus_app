@@ -23,52 +23,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isLoading = true;
   String _currentUserId = '';
 
-  // Local mockup fallback if DB is empty
-  final List<Map<String, dynamic>> _mockNotifications = [
-    {
-      'id': 'mock_1',
-      'type': 'friend_request',
-      'title': 'Phantom_Ace sent you a friend request',
-      'time': '12m ago',
-      'isRead': false,
-      'status': 'pending',
-      'section': 'TODAY',
-      'relatedId': 'phantom_ace_mock_uid',
-    },
-    {
-      'id': 'mock_2',
-      'type': 'gg',
-      'title': 'Nova_Strike and 88 others GG\'d your clutch VOD',
-      'time': '1h ago',
-      'isRead': false,
-      'section': 'TODAY',
-    },
-    {
-      'id': 'mock_3',
-      'type': 'rsvp',
-      'title': 'Grand Finals starts in 2 hours — you RSVP\'d',
-      'time': '2h ago',
-      'isRead': true,
-      'section': 'TODAY',
-    },
-    {
-      'id': 'mock_4',
-      'type': 'invite',
-      'title': 'Valorant Tactics invited you to join the community',
-      'time': 'Yesterday',
-      'isRead': true,
-      'section': 'EARLIER',
-    },
-    {
-      'id': 'mock_5',
-      'type': 'mention',
-      'title': 'Pixel_Queen mentioned you in Elite Setups',
-      'time': 'Yesterday',
-      'isRead': true,
-      'section': 'EARLIER',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -106,54 +60,37 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _markAllAsRead() async {
     if (_currentUserId.isEmpty) return;
     
-    // If we are using the DB list
-    if (_dbNotifications.isNotEmpty) {
-      setState(() {
-        _isLoading = true;
-      });
-      try {
-        await _notificationService.markAllAsRead(_currentUserId);
-        await _loadNotifications();
-      } on AppException catch (e) {
-        if (mounted) {
-          CustomSnackBar.showErrorSnackBar(context, e);
-          setState(() {
-            _isLoading = false;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          CustomSnackBar.showErrorSnackBar(
-            context,
-            AppException(
-              title: 'Failed to Mark Read',
-              message: 'Could not mark notifications as read. Please try again.',
-              actionText: 'Retry',
-            ),
-          );
-          setState(() {
-            _isLoading = false;
-          });
-        }
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      await _notificationService.markAllAsRead(_currentUserId);
+      await _loadNotifications();
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+        setState(() {
+          _isLoading = false;
+        });
       }
-    } else {
-      // Local mockup mark read
-      setState(() {
-        for (var notif in _mockNotifications) {
-          notif['isRead'] = true;
-        }
-      });
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Failed to Mark Read',
+            message: 'Could not mark notifications as read. Please try again.',
+            actionText: 'Retry',
+          ),
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _deleteNotification(String id) async {
-    final isMock = id.startsWith('mock_');
-    if (isMock) {
-      setState(() {
-        _mockNotifications.removeWhere((item) => item['id'] == id);
-      });
-      return;
-    }
     if (_currentUserId.isEmpty) return;
     try {
       await _notificationService.deleteNotification(_currentUserId, id);
@@ -162,24 +99,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _handleFriendRequest(String id, String relatedId, String newStatus) async {
-    final isMock = id.startsWith('mock_');
-
-    if (isMock) {
-      setState(() {
-        final index = _mockNotifications.indexWhere((element) => element['id'] == id);
-        if (index != -1) {
-          _mockNotifications[index]['status'] = newStatus;
-          _mockNotifications[index]['isRead'] = true;
-        }
-      });
-      CustomSnackBar.showSuccessSnackBar(
-        context,
-        title: 'Action Processed',
-        message: 'Mock request ${newStatus == 'accepted' ? 'accepted' : 'declined'} (Offline Demo)',
-      );
-      return;
-    }
-
     if (_currentUserId.isEmpty || relatedId.isEmpty) return;
 
     setState(() {
@@ -243,21 +162,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Determine which data to show: DB notifications if any, fallback to mocks
-    final hasDb = _dbNotifications.isNotEmpty;
-    
-    final List<Map<String, dynamic>> itemsToShow = hasDb
-        ? _dbNotifications.map((n) => {
-              'id': n.id,
-              'type': n.type,
-              'title': n.title,
-              'time': _formatTimeAgo(n.createdAt),
-              'isRead': n.isRead,
-              'status': n.status,
-              'section': _getSection(n.createdAt),
-              'relatedId': n.relatedId,
-            }).toList()
-        : _mockNotifications;
+    final List<Map<String, dynamic>> itemsToShow = _dbNotifications.map((n) => {
+          'id': n.id,
+          'type': n.type,
+          'title': n.title,
+          'time': _formatTimeAgo(n.createdAt),
+          'isRead': n.isRead,
+          'status': n.status,
+          'section': _getSection(n.createdAt),
+          'relatedId': n.relatedId,
+        }).toList();
 
     final todayNotifications = itemsToShow.where((item) => item['section'] == 'TODAY').toList();
     final earlierNotifications = itemsToShow.where((item) => item['section'] == 'EARLIER').toList();
@@ -329,22 +243,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (!hasDb)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 16, left: 4),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryPurple.withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: AppColors.primaryPurple.withValues(alpha: 0.25)),
-                                      ),
-                                      child: const Text(
-                                        'Offline Demo Mode (Firestore notifications empty)',
-                                        style: TextStyle(color: AppColors.primaryPurple, fontSize: 11, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ),
                                 if (todayNotifications.isNotEmpty) ...[
                                   _buildSectionHeader('TODAY'),
                                   ...todayNotifications.map((item) => _buildNotificationCard(item)),
