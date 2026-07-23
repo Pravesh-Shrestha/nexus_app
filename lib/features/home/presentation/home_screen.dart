@@ -24,7 +24,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMixin {
   final AuthService _authService = AuthService();
   final FriendsService _friendsService = FriendsService();
   final CommunityService _communityService = CommunityService();
@@ -35,6 +35,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<UserModel> _recommended = [];
   bool _isLoading = true;
   String _currentUserId = '';
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -118,6 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final model = _userModel;
     final String fullName = model?.fullName.isNotEmpty == true ? model!.fullName : 'Gamer';
     final String username = model?.username.isNotEmpty == true ? model!.username : 'User';

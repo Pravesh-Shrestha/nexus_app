@@ -17,7 +17,7 @@ class InboxScreen extends StatefulWidget {
   State<InboxScreen> createState() => _InboxScreenState();
 }
 
-class _InboxScreenState extends State<InboxScreen> {
+class _InboxScreenState extends State<InboxScreen> with AutomaticKeepAliveClientMixin {
   final FriendsService _friendsService = FriendsService();
   final ChatService _chatService = ChatService();
   final String _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -26,6 +26,9 @@ class _InboxScreenState extends State<InboxScreen> {
   bool _isLoadingFriends = true;
   String _searchQuery = '';
   final Set<String> _startingChatIds = {};
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -107,6 +110,7 @@ class _InboxScreenState extends State<InboxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(

@@ -22,7 +22,7 @@ class ExploreScreen extends StatefulWidget {
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
 
-class _ExploreScreenState extends State<ExploreScreen> {
+class _ExploreScreenState extends State<ExploreScreen> with AutomaticKeepAliveClientMixin {
   final CommunityService _communityService = CommunityService();
   final EventService _eventService = EventService();
   final String _currentUserId = FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -30,6 +30,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool _isEventsTab = false; // False = Communities, True = Events
   String _searchQuery = '';
   String _selectedTag = '';
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -138,6 +141,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
