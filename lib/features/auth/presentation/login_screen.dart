@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nexus_app/features/auth/presentation/signup_screen.dart';
+import 'package:nexus_app/features/auth/presentation/profile_setup_screen.dart';
 import 'package:nexus_app/features/home/presentation/main_layout.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
@@ -189,9 +191,26 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final user = await _authService.signInWithGoogle();
       if (user != null && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainLayout()),
-        );
+        // Check if user document exists in Firestore
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.user!.uid).get();
+        if (!mounted) return;
+        if (userDoc.exists) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainLayout()),
+          );
+        } else {
+          // New User via Google: Route to ProfileSetupScreen to set up username and other metadata
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => ProfileSetupScreen(
+                fullName: user.user!.displayName ?? '',
+                username: user.user!.email != null ? user.user!.email!.split('@')[0] : 'Gamer',
+                dob: '',
+                gender: 'Prefer not to say',
+              ),
+            ),
+          );
+        }
       }
     } on AppException catch (e) {
       if (mounted) {

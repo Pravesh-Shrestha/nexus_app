@@ -8,6 +8,10 @@ import 'package:nexus_app/features/auth/presentation/biometric_lock_screen.dart'
 
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nexus_app/features/auth/presentation/profile_setup_screen.dart';
+import 'package:nexus_app/features/auth/data/user_model.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -21,13 +25,31 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     FlutterNativeSplash.remove();
     // Check auth status after the animation delay of 3 seconds
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 3), () async {
       if (mounted) {
         final authService = AuthService();
         final user = authService.currentUser;
         
         if (user != null) {
-          _checkBiometricSession(user.uid);
+          // Verify if the user profile document exists in Firestore
+          final userModel = await authService.getUserData(user.uid);
+          if (userModel == null) {
+            if (mounted) {
+              final authUser = FirebaseAuth.instance.currentUser;
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => ProfileSetupScreen(
+                    fullName: authUser?.displayName ?? '',
+                    username: authUser?.email != null ? authUser!.email!.split('@')[0] : 'Gamer',
+                    dob: '',
+                    gender: 'Prefer not to say',
+                  ),
+                ),
+              );
+            }
+          } else {
+            _checkBiometricSession(userModel);
+          }
         } else {
           // No user logged in
           Navigator.of(context).pushReplacement(
@@ -38,7 +60,7 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
-  Future<void> _checkBiometricSession(String uid) async {
+  Future<void> _checkBiometricSession(UserModel userModel) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final bool useBiometrics = prefs.getBool('use_biometrics') ?? false;
@@ -50,13 +72,12 @@ class _SplashScreenState extends State<SplashScreen> {
         final int diffDays = DateTime.now().difference(lastDateTime).inDays;
 
         if (diffDays >= intervalDays || lastVerification == 0) {
-          final userModel = await AuthService().getUserData(uid);
           if (mounted) {
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                 builder: (_) => BiometricLockScreen(
-                  username: userModel?.username ?? 'Agent',
-                  profileImageUrl: userModel?.profileImageUrl ?? '',
+                  username: userModel.username,
+                  profileImageUrl: userModel.profileImageUrl,
                 ),
               ),
             );
