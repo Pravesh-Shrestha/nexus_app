@@ -1,8 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:nexus_app/features/home/presentation/home_screen.dart';
+import 'package:nexus_app/core/services/email_service.dart';
+import 'package:nexus_app/features/home/presentation/main_layout.dart';
 
-class SetupSuccessScreen extends StatelessWidget {
-  const SetupSuccessScreen({super.key});
+class SetupSuccessScreen extends StatefulWidget {
+  final String email;
+  final String fullName;
+
+  const SetupSuccessScreen({
+    super.key,
+    required this.email,
+    required this.fullName,
+  });
+
+  @override
+  State<SetupSuccessScreen> createState() => _SetupSuccessScreenState();
+}
+
+class _SetupSuccessScreenState extends State<SetupSuccessScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Send the welcome email after the widget is mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendWelcomeEmail();
+    });
+  }
+
+  Future<void> _sendWelcomeEmail() async {
+    if (widget.email.isEmpty) return;
+    try {
+      await EmailService().sendWelcomeEmail(
+        recipientEmail: widget.email,
+        recipientName: widget.fullName,
+      );
+    } catch (e) {
+      debugPrint('Error sending welcome email: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,12 +71,12 @@ class SetupSuccessScreen extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: const Color(0xFF15161A),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                           width: 2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF00E5FF).withOpacity(0.15),
+                            color: const Color(0xFF00E5FF).withValues(alpha: 0.15),
                             blurRadius: 40,
                             spreadRadius: 10,
                           ),
@@ -108,7 +142,7 @@ class SetupSuccessScreen extends StatelessWidget {
                   GestureDetector(
                     onTap: () {
                       Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const HomeScreen()),
+                        MaterialPageRoute(builder: (_) => const MainLayout()),
                       );
                     },
                     child: Container(

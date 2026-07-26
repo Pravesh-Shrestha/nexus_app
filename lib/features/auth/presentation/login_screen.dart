@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nexus_app/features/auth/presentation/signup_screen.dart';
-import 'package:nexus_app/features/home/presentation/home_screen.dart';
+import 'package:nexus_app/features/auth/presentation/profile_setup_screen.dart';
+import 'package:nexus_app/features/home/presentation/main_layout.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
+import 'package:nexus_app/core/presentation/widgets/custom_text_field.dart';
+import 'package:nexus_app/core/presentation/widgets/gradient_button.dart';
+import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +24,110 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = false;
-  bool _obscurePassword = true;
+  bool _isLoading = false;
+  final AuthService _authService = AuthService();
+
+  bool _isBiometricSupported = false;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedEmail();
+    _checkBiometricsSupport();
+  }
+
+  Future<void> _loadSavedEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastEmail = prefs.getString('cached_user_email') ?? '';
+      if (lastEmail.isNotEmpty && mounted) {
+        _usernameController.text = lastEmail;
+      }
+    } catch (e) {
+      debugPrint('Error loading saved email: $e');
+    }
+  }
+
+  Future<void> _checkBiometricsSupport() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bool useBiometricsSetting = prefs.getBool('use_biometrics') ?? false;
+      if (!useBiometricsSetting) return;
+
+      final isAvailable = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
+      if (isAvailable && mounted) {
+        setState(() {
+          _isBiometricSupported = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking biometrics support: $e');
+    }
+  }
+
+  Future<void> _loginWithBiometrics() async {
+    setState(() => _isLoading = true);
+    try {
+      final authenticated = await _localAuth.authenticate(
+        localizedReason: 'Scan fingerprint or face to authenticate and decrypt Nexus profile.',
+        persistAcrossBackgrounding: true,
+        biometricOnly: true,
+      );
+
+      if (authenticated) {
+        final prefs = await SharedPreferences.getInstance();
+        final email = prefs.getString('cached_user_email') ?? '';
+        final password = prefs.getString('cached_user_password') ?? '';
+
+        if (email.isNotEmpty && password.isNotEmpty) {
+          await _authService.signInWithEmail(email: email, password: password);
+          await prefs.setInt('last_biometric_verification', DateTime.now().millisecondsSinceEpoch);
+
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const MainLayout()),
+            );
+          }
+        } else {
+          final currentUser = _authService.currentUser;
+          if (currentUser != null) {
+            await prefs.setInt('last_biometric_verification', DateTime.now().millisecondsSinceEpoch);
+            if (mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const MainLayout()),
+              );
+            }
+          } else {
+            throw AppException(
+              title: 'Biometric Failed',
+              message: 'No cached credentials found. Please log in with your password once first.',
+              actionText: 'Understood',
+            );
+          }
+        }
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Biometric Login Error',
+            message: 'An unexpected error occurred during biometric login.',
+            actionText: 'Retry',
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -23,11 +136,102 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
-    // For now, bypass auth and go to HomeScreen
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+  Future<void> _login() async {
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
+      CustomSnackBar.showErrorSnackBar(
+        context,
+        AppException(
+          title: 'Missing Fields',
+          message: 'Please enter both your email and password.',
+          actionText: 'Okay',
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await _authService.signInWithEmail(
+        email: _usernameController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cached_user_email', _usernameController.text.trim());
+      await prefs.setString('cached_user_password', _passwordController.text.trim());
+
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainLayout()),
+        );
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Login Error',
+            message: 'An unexpected error occurred.',
+            actionText: 'Retry',
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = await _authService.signInWithGoogle();
+      if (user != null && mounted) {
+        // Check if user document exists in Firestore
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.user!.uid).get();
+        if (!mounted) return;
+        if (userDoc.exists) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainLayout()),
+          );
+        } else {
+          // New User via Google: Route to ProfileSetupScreen to set up username and other metadata
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => ProfileSetupScreen(
+                fullName: user.user!.displayName ?? '',
+                username: user.user!.email != null ? user.user!.email!.split('@')[0] : 'Gamer',
+                dob: '',
+                gender: 'Prefer not to say',
+              ),
+            ),
+          );
+        }
+      }
+    } on AppException catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(context, e);
+      }
+    } catch (e) {
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'Google Login Error',
+            message: 'An unexpected error occurred.',
+            actionText: 'Retry',
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _goToSignup() {
@@ -36,22 +240,161 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialButton(String assetName, IconData fallbackIcon) {
-    return Container(
-      width: 48,
-      height: 48,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.surfaceHighlight,
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Center(
-        child: Image.asset(
-          'assets/images/auth/$assetName',
-          width: 24,
-          height: 24,
-          errorBuilder: (context, error, stackTrace) => Icon(fallbackIcon, color: Colors.white, size: 24),
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+    bool dialogLoading = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF0B0C10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: Colors.white10),
+              ),
+              title: const Text(
+                'Reset Password',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Enter your registered email address and we will send you a secure link to reset your password.',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  CustomTextField(
+                    controller: emailController,
+                    hintText: 'Email Address',
+                    prefixIcon: Icons.email_outlined,
+                  ),
+                ],
+              ),
+              actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: dialogLoading ? null : () => Navigator.of(context).pop(),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.white54),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: dialogLoading
+                          ? const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryCyan),
+                                ),
+                              ),
+                            )
+                          : GradientButton(
+                              text: 'SEND LINK',
+                              onTap: () async {
+                                final email = emailController.text.trim();
+                                if (email.isEmpty) {
+                                  CustomSnackBar.showErrorSnackBar(
+                                    context,
+                                    AppException(
+                                      title: 'Invalid Input',
+                                      message: 'Please enter your email address.',
+                                      actionText: 'Okay',
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                setDialogState(() => dialogLoading = true);
+                                try {
+                                  await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                                  if (context.mounted) {
+                                    Navigator.of(context).pop();
+                                    CustomSnackBar.showSuccessSnackBar(
+                                      context,
+                                      title: 'Link Sent',
+                                      message: 'Password reset link sent successfully!',
+                                    );
+                                  }
+                                } on FirebaseAuthException catch (e) {
+                                  if (context.mounted) {
+                                    CustomSnackBar.showErrorSnackBar(
+                                      context,
+                                      AppException(
+                                        title: 'Failed to Send',
+                                        message: e.message ?? 'An error occurred while sending the reset link.',
+                                        actionText: 'Try Again',
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    CustomSnackBar.showErrorSnackBar(
+                                      context,
+                                      AppException(
+                                        title: 'Reset Error',
+                                        message: 'An unexpected error occurred.',
+                                        actionText: 'Try Again',
+                                      ),
+                                    );
+                                  }
+                                } finally {
+                                  if (context.mounted) {
+                                    setDialogState(() => dialogLoading = false);
+                                  }
+                                }
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) => emailController.dispose());
+  }
+
+  Widget _buildSocialButton(String assetName, IconData fallbackIcon, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.surfaceHighlight,
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Center(
+          child: Image.asset(
+            'assets/images/auth/$assetName',
+            width: 24,
+            height: 24,
+            errorBuilder: (context, error, stackTrace) => Icon(fallbackIcon, color: Colors.white, size: 24),
+          ),
         ),
       ),
     );
@@ -77,7 +420,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         center: Alignment.topCenter,
                         radius: 1.5,
                         colors: [
-                          AppColors.secondaryPurple.withOpacity(0.3),
+                          AppColors.secondaryPurple.withValues(alpha: 0.3),
                           Colors.transparent,
                         ],
                         stops: const [0.0, 1.0],
@@ -126,7 +469,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           border: Border.all(color: Colors.white12, width: 1),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.secondaryPurple.withOpacity(0.3),
+                              color: AppColors.secondaryPurple.withValues(alpha: 0.3),
                               blurRadius: 40,
                               spreadRadius: 5,
                             ),
@@ -153,58 +496,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Column(
                   children: [
-                    // Username/Email Field
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF16171D),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: TextField(
-                        controller: _usernameController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Username or email',
-                          hintStyle: const TextStyle(color: Colors.white30),
-                          prefixIcon: const Icon(Icons.alternate_email, color: Colors.white30, size: 20),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                        ),
-                      ),
+                    CustomTextField(
+                      controller: _usernameController,
+                      hintText: 'Username or email',
+                      prefixIcon: Icons.alternate_email,
                     ),
-                    const SizedBox(height: 16),
-                    
-                    // Password Field
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF16171D),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: TextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          hintStyle: const TextStyle(color: Colors.white30),
-                          prefixIcon: const Icon(Icons.lock_outline, color: Colors.white30, size: 20),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                              color: Colors.white30,
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscurePassword = !_obscurePassword;
-                              });
-                            },
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 18),
-                        ),
-                      ),
+                    CustomTextField(
+                      controller: _passwordController,
+                      hintText: 'Password',
+                      prefixIcon: Icons.lock_outline,
+                      isPassword: true,
                     ),
-                    const SizedBox(height: 16),
                     
                     // Remember me & Forgot Password
                     Row(
@@ -236,7 +538,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: _showForgotPasswordDialog,
                           child: const Text(
                             'Forgot password?',
                             style: TextStyle(color: AppColors.primaryCyan, fontSize: 12),
@@ -247,42 +549,32 @@ class _LoginScreenState extends State<LoginScreen> {
                     
                     const SizedBox(height: 32),
                     
-                    // LOGIN Button
-                    GestureDetector(
-                      onTap: _login,
-                      child: Container(
-                        width: double.infinity,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
-                          gradient: AppColors.authButtonGradient,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primaryCyan.withOpacity(0.3),
-                              blurRadius: 15,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: Container(
-                          margin: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(26),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GradientButton(
+                            text: 'LOGIN',
+                            isLoading: _isLoading,
+                            onTap: _isLoading ? () {} : _login,
                           ),
-                          child: const Center(
-                            child: Text(
-                              'LOGIN',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.5,
+                        ),
+                        if (_isBiometricSupported) ...[
+                          const SizedBox(width: 12),
+                          GestureDetector(
+                            onTap: _isLoading ? null : _loginWithBiometrics,
+                            child: Container(
+                              height: 50,
+                              width: 50,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF16171D),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white10),
                               ),
+                              child: const Icon(Icons.fingerprint, color: AppColors.primaryCyan, size: 28),
                             ),
                           ),
-                        ),
-                      ),
+                        ],
+                      ],
                     ),
                     
                     const SizedBox(height: 32),
@@ -332,7 +624,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildSocialButton('google.png', Icons.g_mobiledata),
+                        _buildSocialButton('google.png', Icons.g_mobiledata, onTap: _isLoading ? null : _loginWithGoogle),
                         _buildSocialButton('facebook.png', Icons.facebook),
                         _buildSocialButton('apple.png', Icons.apple),
                       ],

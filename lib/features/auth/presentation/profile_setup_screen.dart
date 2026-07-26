@@ -1,8 +1,26 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:nexus_app/features/auth/data/auth_service.dart';
+import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/features/auth/presentation/setup_success_screen.dart';
+import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({super.key});
+  final String fullName;
+  final String username;
+  final String dob;
+  final String gender;
+
+  const ProfileSetupScreen({
+    super.key,
+    required this.fullName,
+    required this.username,
+    required this.dob,
+    required this.gender,
+  });
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -14,6 +32,62 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final List<String> _selectedGames = [];
   String _selectedPlaystyle = 'Crazy';
   String _selectedSkillLevel = 'Pro';
+
+  double? _latitude;
+  double? _longitude;
+  String _locationName = '';
+  bool _isCalibratingGps = false;
+
+  Future<void> _calibrateGps() async {
+    setState(() => _isCalibratingGps = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw 'Location services are disabled.';
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw 'Location permissions are denied.';
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw 'Location permissions are permanently denied.';
+      }
+
+      Position position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+        _locationName = 'User GPS Sector';
+        _isCalibratingGps = false;
+      });
+    } catch (e) {
+      setState(() => _isCalibratingGps = false);
+      if (mounted) {
+        CustomSnackBar.showErrorSnackBar(
+          context,
+          AppException(
+            title: 'GPS Access Failed',
+            message: 'GPS Access: $e. Simulating regional grid offset.',
+            actionText: 'Okay',
+          ),
+        );
+      }
+      // Fallback
+      final math.Random random = math.Random();
+      final double simulatedLat = 27.7172 + (random.nextDouble() - 0.5) * 0.005;
+      final double simulatedLng = 85.3240 + (random.nextDouble() - 0.5) * 0.005;
+      setState(() {
+        _latitude = simulatedLat;
+        _longitude = simulatedLng;
+        _locationName = 'Sector Grid ${random.nextInt(90) + 10}';
+      });
+    }
+  }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -48,7 +122,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.white.withOpacity(0.3),
+                    color: Colors.white.withValues(alpha: 0.3),
                     blurRadius: 10,
                     spreadRadius: 1,
                   )
@@ -222,6 +296,68 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       }).toList(),
                     ),
                     
+                    // GPS LOCATION
+                    _buildSectionTitle('TACTICAL GPS POSITION (OPTIONAL)'),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16171D),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _latitude != null ? 'GRID CALIBRATED' : 'OFFLINE',
+                                  style: TextStyle(
+                                    color: _latitude != null ? const Color(0xFF00E5FF) : Colors.white38,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _latitude != null
+                                      ? '$_locationName (${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)})'
+                                      : 'Share your location to find allies nearby.',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: _isCalibratingGps ? null : _calibrateGps,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: _latitude != null ? Colors.white : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white24),
+                              ),
+                              child: _isCalibratingGps
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                    )
+                                  : Text(
+                                      _latitude != null ? 'Recalibrate' : 'Sync GPS',
+                                      style: TextStyle(
+                                        color: _latitude != null ? Colors.black : Colors.white70,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 40),
                   ],
                 ),
@@ -232,10 +368,56 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
               child: GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => const SetupSuccessScreen()),
+                onTap: () async {
+                  final user = FirebaseAuth.instance.currentUser;
+                  if (user == null) return;
+
+                  final userModel = UserModel(
+                    uid: user.uid,
+                    email: user.email ?? '',
+                    fullName: widget.fullName,
+                    username: widget.username,
+                    dob: widget.dob,
+                    gender: widget.gender,
+                    role: _selectedRole,
+                    favoriteGames: _selectedGames,
+                    playstyle: _selectedPlaystyle,
+                    skillLevel: _selectedSkillLevel,
+                    latitude: _latitude,
+                    longitude: _longitude,
+                    location: _locationName,
                   );
+
+                  final navigator = Navigator.of(context);
+
+                  try {
+                    await AuthService().saveUserData(userModel);
+                    if (mounted) {
+                      navigator.pushReplacement(
+                        MaterialPageRoute(
+                          builder: (_) => SetupSuccessScreen(
+                            email: userModel.email,
+                            fullName: userModel.fullName,
+                          ),
+                        ),
+                      );
+                    }
+                  } on AppException catch (e) {
+                    if (context.mounted) {
+                      CustomSnackBar.showErrorSnackBar(context, e);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      CustomSnackBar.showErrorSnackBar(
+                        context,
+                        AppException(
+                          title: 'Save Failed',
+                          message: 'Failed to save profile. Please try again.',
+                          actionText: 'Retry',
+                        ),
+                      );
+                    }
+                  }
                 },
                 child: Container(
                   width: double.infinity,
@@ -244,12 +426,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     borderRadius: BorderRadius.circular(16),
                     color: const Color(0xFF16171D),
                     border: Border.all(
-                      color: const Color(0xFF00E5FF).withOpacity(0.5),
+                      color: const Color(0xFF00E5FF).withValues(alpha: 0.5),
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF00E5FF).withOpacity(0.1),
+                        color: const Color(0xFF00E5FF).withValues(alpha: 0.1),
                         blurRadius: 10,
                         spreadRadius: 1,
                       )

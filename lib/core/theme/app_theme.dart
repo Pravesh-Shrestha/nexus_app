@@ -11,7 +11,6 @@ class AppTheme {
         primary: AppColors.primaryCyan,
         secondary: AppColors.primaryPurple,
         surface: AppColors.surface,
-        background: AppColors.background,
       ),
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
         bodyMedium: GoogleFonts.inter(color: AppColors.textPrimary),
@@ -38,9 +37,9 @@ class AppTheme {
         suffixIconColor: AppColors.textMuted,
       ),
       checkboxTheme: CheckboxThemeData(
-        checkColor: MaterialStateProperty.all(Colors.white),
-        fillColor: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        checkColor: WidgetStateProperty.all(Colors.white),
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return AppColors.primaryPurple;
           }
           return Colors.transparent;

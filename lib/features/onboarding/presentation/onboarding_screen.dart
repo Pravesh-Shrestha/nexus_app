@@ -138,7 +138,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         color: AppColors.iconContainer,
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.secondaryPurple.withOpacity(0.3),
+                            color: AppColors.secondaryPurple.withValues(alpha: 0.3),
                             blurRadius: 40,
                             spreadRadius: 10,
                           ),
@@ -209,7 +209,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                       colors: [AppColors.primaryPurple, AppColors.secondaryPurple],
                                     )
                                   : null,
-                              color: _currentPage == index ? null : AppColors.textSecondary.withOpacity(0.3),
+                              color: _currentPage == index ? null : AppColors.textSecondary.withValues(alpha: 0.3),
                             ),
                           ),
                         ),
@@ -229,7 +229,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.secondaryPurple.withOpacity(0.4),
+                                color: AppColors.secondaryPurple.withValues(alpha: 0.4),
                                 blurRadius: 15,
                                 spreadRadius: 2,
                               ),
