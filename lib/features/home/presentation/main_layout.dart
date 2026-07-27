@@ -5,6 +5,7 @@ import 'package:nexus_app/features/profile/presentation/profile_screen.dart';
 import 'package:nexus_app/features/chat/presentation/inbox_screen.dart';
 import 'package:animated_notch_bottom_bar/animated_notch_bottom_bar/animated_notch_bottom_bar.dart';
 import 'package:nexus_app/features/explore/presentation/explore_screen.dart';
+import 'package:nexus_app/core/presentation/widgets/shake_refresh_wrapper.dart';
 
 class TabNavigationController {
   static final ValueNotifier<int> activeTab = ValueNotifier<int>(0);
@@ -23,6 +24,14 @@ class _MainLayoutState extends State<MainLayout> {
   final _notchBottomBarController = NotchBottomBarController(index: 0);
 
   int maxCount = 4;
+  
+  // Track keys dynamically to force tab rebuild on shake refresh
+  final List<Key> _pageKeys = [
+    UniqueKey(),
+    UniqueKey(),
+    UniqueKey(),
+    UniqueKey(),
+  ];
 
   @override
   void initState() {
@@ -46,24 +55,34 @@ class _MainLayoutState extends State<MainLayout> {
     }
   }
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const ExploreScreen(),
-    const InboxScreen(),
-    const ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        children: _pages,
+      body: ShakeRefreshWrapper(
+        onRefresh: () async {
+          setState(() {
+            final activeIndex = TabNavigationController.activeTab.value;
+            if (activeIndex >= 0 && activeIndex < _pageKeys.length) {
+              _pageKeys[activeIndex] = UniqueKey();
+            }
+          });
+          // Wait 1.5 seconds for reconstruction and network fetch
+          await Future.delayed(const Duration(milliseconds: 1500));
+        },
+        child: PageView(
+          controller: _pageController,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            HomeScreen(key: _pageKeys[0]),
+            ExploreScreen(key: _pageKeys[1]),
+            InboxScreen(key: _pageKeys[2]),
+            ProfileScreen(key: _pageKeys[3]),
+          ],
+        ),
       ),
       extendBody: true,
-      bottomNavigationBar: _pages.length <= maxCount
+      bottomNavigationBar: maxCount > 0
           ? AnimatedNotchBottomBar(
               notchBottomBarController: _notchBottomBarController,
               color: AppColors.surfaceHighlight,
