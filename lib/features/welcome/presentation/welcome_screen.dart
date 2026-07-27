@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:nexus_app/core/presentation/widgets/shake_refresh_wrapper.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -17,7 +18,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     final size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: GestureDetector(
+      body: ShakeRefreshWrapper(
+        onRefresh: () async {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          );
+        },
+        child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onVerticalDragStart: (details) {
           _dragStartY = details.globalPosition.dy;
@@ -148,6 +155,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
