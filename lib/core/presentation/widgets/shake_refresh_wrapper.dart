@@ -32,21 +32,24 @@ class _ShakeRefreshWrapperState extends State<ShakeRefreshWrapper> {
     debugPrint('ShakeRefreshWrapper: Subscribing to accelerometerEvents...');
     _subscription = accelerometerEventStream().listen(
       (AccelerometerEvent event) {
+        if (!mounted) return;
+        if (_isRefreshing) return;
+
+        // Prevent double loaders: only trigger shake refresh if this wrapper is on the topmost active screen
+        if (!_isTopRoute()) {
+          return;
+        }
+
         final double gX = event.x / 9.80665;
         final double gY = event.y / 9.80665;
         final double gZ = event.z / 9.80665;
 
         final double gForce = sqrt(gX * gX + gY * gY + gZ * gZ);
-        
-        // Print logs when movement starts to show it's working
-        if (gForce > 1.05) {
-          debugPrint('ShakeRefreshWrapper: Force = ${gForce.toStringAsFixed(2)}g');
-        }
 
-        // 1.15g is extremely sensitive (detects slight pickup/nudge)
-        if (gForce > 1.15) {
+        // 1.25g threshold allows a light, single deliberate shake to trigger it
+        if (gForce > 1.25) {
           final now = DateTime.now();
-          if (_lastShakeTime == null || now.difference(_lastShakeTime!) > const Duration(seconds: 2)) {
+          if (_lastShakeTime == null || now.difference(_lastShakeTime!) > const Duration(seconds: 8)) {
             _lastShakeTime = now;
             _handleShake();
           }
@@ -112,6 +115,24 @@ class _ShakeRefreshWrapperState extends State<ShakeRefreshWrapper> {
       setState(() {
         _isRefreshing = false;
       });
+    }
+  }
+
+  bool _isTopRoute() {
+    if (!mounted) return false;
+    try {
+      final myRoute = ModalRoute.of(context);
+      if (myRoute == null) return true;
+
+      Route? topmostRoute;
+      Navigator.of(context).popUntil((route) {
+        topmostRoute = route;
+        return true;
+      });
+
+      return myRoute == topmostRoute;
+    } catch (_) {
+      return true;
     }
   }
 
