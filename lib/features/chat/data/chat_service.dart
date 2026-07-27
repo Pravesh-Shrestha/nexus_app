@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/chat/data/message_model.dart';
 import 'package:nexus_app/features/friends/data/friends_service.dart';
 import 'package:nexus_app/features/auth/data/user_model.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/services/push_notification_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -117,6 +119,23 @@ class ChatService {
       }
 
       await _firestore.collection('chats').doc(chatId).update(updateData);
+
+      // Trigger client-side push notification
+      if (otherUserId.isNotEmpty) {
+        try {
+          final senderDoc = await _firestore.collection('users').doc(senderId).get();
+          final senderName = senderDoc.exists ? (senderDoc.data()?['fullName'] ?? 'A user') : 'A user';
+          await PushNotificationService.sendPushToUser(
+            recipientId: otherUserId,
+            title: senderName,
+            body: type == 'image' ? '$senderName sent a photo.' : text,
+            type: 'chat',
+            extraData: {'chatId': chatId},
+          );
+        } catch (e) {
+          debugPrint('FCM direct push trigger failed: $e');
+        }
+      }
     } on AppException {
       rethrow;
     } catch (e) {

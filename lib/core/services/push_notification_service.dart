@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:googleapis_auth/auth_io.dart' as auth;
+import 'package:http/http.dart' as http;
 import 'package:nexus_app/main.dart';
 import 'package:nexus_app/features/home/presentation/notifications_screen.dart';
 import 'package:nexus_app/features/chat/presentation/inbox_screen.dart';
@@ -147,6 +150,77 @@ class PushNotificationService {
       }
     } catch (e) {
       debugPrint('FCM Get Token Error: $e');
+    }
+  }
+
+  static Future<String?> _getAccessToken() async {
+    try {
+      final String serviceAccountJson = await rootBundle.loadString('assets/config/service-account.json');
+      final Map<String, dynamic> accountCredentials = jsonDecode(serviceAccountJson);
+      final auth.ServiceAccountCredentials credentials = auth.ServiceAccountCredentials.fromJson(accountCredentials);
+      final List<String> scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
+      
+      final client = await auth.clientViaServiceAccount(credentials, scopes);
+      return client.credentials.accessToken.data;
+    } catch (e) {
+      debugPrint('Failed to get FCM Access Token: $e');
+      return null;
+    }
+  }
+
+  static Future<void> sendPushToUser({
+    required String recipientId,
+    required String title,
+    required String body,
+    required String type,
+    Map<String, String>? extraData,
+  }) async {
+    try {
+      // 1. Fetch recipient tokens from Firestore
+      final recipientDoc = await FirebaseFirestore.instance.collection('users').doc(recipientId).get();
+      if (!recipientDoc.exists) return;
+
+      final List<dynamic> tokens = recipientDoc.data()?['fcmTokens'] ?? [];
+      if (tokens.isEmpty) return;
+
+      // 2. Fetch OAuth2 token
+      final String? accessToken = await _getAccessToken();
+      if (accessToken == null) return;
+
+      final String url = 'https://fcm.googleapis.com/v1/projects/nexus-flutter-fe83a/messages:send';
+
+      for (final dynamic token in tokens) {
+        final Map<String, dynamic> payload = {
+          'message': {
+            'token': token,
+            'notification': {
+              'title': title,
+              'body': body,
+            },
+            'data': {
+              'type': type,
+              ...?extraData,
+            },
+          }
+        };
+
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+          },
+          body: jsonEncode(payload),
+        );
+
+        if (response.statusCode == 200) {
+          debugPrint('Successfully sent push notification to token: $token');
+        } else {
+          debugPrint('Failed to send push notification: ${response.statusCode} - ${response.body}');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error sending push notification: $e');
     }
   }
 }

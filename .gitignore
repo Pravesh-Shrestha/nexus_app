@@ -43,3 +43,11 @@ app.*.map.json
 
 # Exceptions to above rules.
 !/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
+
+# Node modules & Cloud Functions dependencies
+node_modules/
+functions/node_modules/
+
+# Private Credentials / Service Account Keys
+*-firebase-adminsdk-*.json
+service-account.json
