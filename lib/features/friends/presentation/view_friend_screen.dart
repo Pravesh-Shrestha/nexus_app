@@ -10,6 +10,7 @@ import 'package:nexus_app/features/auth/data/auth_service.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 import 'package:nexus_app/features/friends/presentation/user_lists_screen.dart';
+import 'package:nexus_app/features/community/data/community_service.dart';
 
 class ViewFriendScreen extends StatefulWidget {
   final Map<String, dynamic>? allyData;
@@ -28,6 +29,7 @@ class ViewFriendScreen extends StatefulWidget {
 class _ViewFriendScreenState extends State<ViewFriendScreen> {
   final FriendsService _friendsService = FriendsService();
   final ChatService _chatService = ChatService();
+  final CommunityService _communityService = CommunityService();
   
   String _friendshipStatus = 'none'; // 'friends' | 'pending_sent' | 'pending_received' | 'none'
   bool _isLoading = true;
@@ -325,9 +327,6 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
         ? (widget.userModel!.bio.isNotEmpty ? widget.userModel!.bio : 'Active gamer · down to squad up')
         : (widget.allyData?['bio'] ?? 'IGL · looking for competitive team play');
 
-    final String friendsCount = widget.allyData?['friendsCount'] ?? '150';
-    final String communitiesCount = widget.allyData?['communitiesCount'] ?? '8';
-
     final String game = widget.userModel != null
         ? (widget.userModel!.favoriteGames.isNotEmpty ? widget.userModel!.favoriteGames.join(', ') : 'Valorant')
         : (widget.allyData?['game'] ?? 'Valorant');
@@ -459,38 +458,50 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => UserListsScreen(
-                                  userId: _getTargetUserId(),
-                                  userName: name,
-                                  initialShowCommunities: false,
-                                ),
-                              ),
+                        child: StreamBuilder(
+                          stream: _friendsService.getFriendsList(_getTargetUserId()),
+                          builder: (context, snapshot) {
+                            final count = snapshot.data?.friendUids.length ?? 0;
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => UserListsScreen(
+                                      userId: _getTargetUserId(),
+                                      userName: name,
+                                      initialShowCommunities: false,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: _buildStatCard('Friends', count.toString()),
                             );
-                          },
-                          child: _buildStatCard('Friends', friendsCount),
+                          }
                         ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => UserListsScreen(
-                                  userId: _getTargetUserId(),
-                                  userName: name,
-                                  initialShowCommunities: true,
-                                ),
-                              ),
+                        child: StreamBuilder(
+                          stream: _communityService.getJoinedCommunities(_getTargetUserId()),
+                          builder: (context, snapshot) {
+                            final count = snapshot.data?.length ?? 0;
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => UserListsScreen(
+                                      userId: _getTargetUserId(),
+                                      userName: name,
+                                      initialShowCommunities: true,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: _buildStatCard('Communities', count.toString()),
                             );
-                          },
-                          child: _buildStatCard('Communities', communitiesCount),
+                          }
                         ),
                       ),
                     ],
