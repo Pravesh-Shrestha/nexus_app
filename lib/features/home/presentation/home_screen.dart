@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 import 'package:nexus_app/core/theme/app_sizes.dart';
 import 'package:nexus_app/features/auth/data/auth_service.dart';
@@ -186,13 +187,44 @@ class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMi
                                       ),
                                     ).then((_) => _loadHomeData());
                                   },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.surfaceHighlight,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(Icons.notifications_none, color: Colors.white, size: 20),
+                                  child: StreamBuilder<QuerySnapshot>(
+                                    stream: _currentUserId.isEmpty
+                                        ? const Stream.empty()
+                                        : FirebaseFirestore.instance
+                                            .collection('users')
+                                            .doc(_currentUserId)
+                                            .collection('notifications')
+                                            .where('isRead', isEqualTo: false)
+                                            .snapshots(),
+                                    builder: (context, snapshot) {
+                                      final bool hasUnread = snapshot.hasData && snapshot.data!.docs.isNotEmpty;
+                                      return Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: const BoxDecoration(
+                                              color: AppColors.surfaceHighlight,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(Icons.notifications_none, color: Colors.white, size: 20),
+                                          ),
+                                          if (hasUnread)
+                                            Positioned(
+                                              right: 2,
+                                              top: 2,
+                                              child: Container(
+                                                width: 8,
+                                                height: 8,
+                                                decoration: const BoxDecoration(
+                                                  color: AppColors.primaryCyan,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                 ),
                                 const SizedBox(width: 12),

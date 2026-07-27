@@ -252,7 +252,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   _buildSectionHeader('EARLIER'),
                                   ...earlierNotifications.map((item) => _buildNotificationCard(item)),
                                 ],
-                                const SizedBox(height: 32),
+                                 const SizedBox(height: 16),
+                                 Center(
+                                   child: Container(
+                                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                     decoration: BoxDecoration(
+                                       color: Colors.white.withValues(alpha: 0.02),
+                                       borderRadius: BorderRadius.circular(12),
+                                       border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                                     ),
+                                     child: Row(
+                                       mainAxisSize: MainAxisSize.min,
+                                       children: const [
+                                         Icon(Icons.info_outline_rounded, color: AppColors.primaryCyan, size: 16),
+                                         SizedBox(width: 8),
+                                         Text(
+                                           'Tip: Swipe left on a notification to delete it',
+                                           style: TextStyle(
+                                             color: Colors.white38,
+                                             fontSize: 12,
+                                             fontWeight: FontWeight.w500,
+                                           ),
+                                         ),
+                                       ],
+                                     ),
+                                   ),
+                                 ),
+                                 const SizedBox(height: 32),
                               ],
                             ),
                           ),

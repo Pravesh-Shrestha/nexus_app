@@ -11,6 +11,7 @@ import 'package:nexus_app/features/chat/presentation/widgets/chat_bubble.dart';
 import 'package:nexus_app/features/chat/presentation/widgets/chat_input_field.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/widgets/custom_snackbar.dart';
+import 'package:nexus_app/core/presentation/widgets/shake_refresh_wrapper.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -337,7 +338,12 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ),
       ),
-      body: SafeArea(
+      body: ShakeRefreshWrapper(
+        onRefresh: () async {
+          _markAsRead();
+          if (mounted) setState(() {});
+        },
+        child: SafeArea(
         child: Column(
           children: [
             // Messages Stream
@@ -418,6 +424,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

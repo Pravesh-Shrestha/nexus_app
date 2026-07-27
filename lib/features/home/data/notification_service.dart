@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/home/data/notification_model.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
+import 'package:nexus_app/core/services/push_notification_service.dart';
 
 class NotificationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -66,6 +68,23 @@ class NotificationService {
           : notification;
 
       await docRef.set(finalNotification.toJson());
+
+      // Trigger client-side push notification
+      try {
+        await PushNotificationService.sendPushToUser(
+          recipientId: receiverId,
+          title: finalNotification.type == 'friend_request' 
+              ? 'New Friend Request'
+              : 'Nexus Alert',
+          body: finalNotification.title,
+          type: finalNotification.type,
+          extraData: finalNotification.relatedId != null && finalNotification.relatedId!.isNotEmpty 
+              ? {'relatedId': finalNotification.relatedId!} 
+              : null,
+        );
+      } catch (e) {
+        debugPrint('Client-side Push Notification trigger failed: $e');
+      }
     } catch (e) {
       throw AppException(
         title: 'Action Failed',
