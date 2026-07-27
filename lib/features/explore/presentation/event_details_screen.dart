@@ -9,6 +9,7 @@ import 'package:nexus_app/features/event/data/event_model.dart';
 import 'package:nexus_app/features/event/data/event_service.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/widgets/custom_snackbar.dart';
+import 'package:nexus_app/core/presentation/widgets/shake_refresh_wrapper.dart';
 
 class EventDetailsScreen extends StatefulWidget {
   final EventModel event;
@@ -301,7 +302,17 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: StreamBuilder<EventModel?>(
+      body: ShakeRefreshWrapper(
+        onRefresh: () async {
+          setState(() {
+            _eventStream = _eventService.getEvents().map((events) {
+              final matches = events.where((e) => e.id == widget.event.id);
+              return matches.isNotEmpty ? matches.first : null;
+            });
+          });
+          await Future.delayed(const Duration(milliseconds: 1000));
+        },
+        child: StreamBuilder<EventModel?>(
         stream: _eventStream,
         initialData: widget.event,
         builder: (context, snapshot) {
@@ -749,6 +760,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
             ],
           );
         },
+      ),
       ),
     );
   }

@@ -11,6 +11,7 @@ import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 import 'package:nexus_app/features/friends/presentation/user_lists_screen.dart';
 import 'package:nexus_app/features/community/data/community_service.dart';
+import 'package:nexus_app/core/presentation/widgets/shake_refresh_wrapper.dart';
 
 class ViewFriendScreen extends StatefulWidget {
   final Map<String, dynamic>? allyData;
@@ -357,8 +358,13 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
+      body: ShakeRefreshWrapper(
+        onRefresh: () async {
+          await _loadCurrentUserAndStatus();
+          if (mounted) setState(() {});
+        },
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: AppColors.primaryPurple))
           : SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: AppSizes.p24, vertical: 8),
               child: Column(
@@ -593,6 +599,7 @@ class _ViewFriendScreenState extends State<ViewFriendScreen> {
                   ],
                 ),
               ),
+      ),
     );
   }
 

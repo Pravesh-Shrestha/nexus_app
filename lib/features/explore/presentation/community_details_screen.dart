@@ -18,6 +18,7 @@ import 'package:nexus_app/features/explore/presentation/post_details_screen.dart
 import 'package:nexus_app/core/exceptions/app_exception.dart';
 import 'package:nexus_app/core/widgets/custom_snackbar.dart';
 import 'package:nexus_app/features/friends/presentation/widgets/friendship_status_button.dart';
+import 'package:nexus_app/core/presentation/widgets/shake_refresh_wrapper.dart';
 
 class CommunityDetailsScreen extends StatefulWidget {
   final CommunityModel community;
@@ -208,7 +209,14 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          body: Stack(
+          body: ShakeRefreshWrapper(
+            onRefresh: () async {
+              setState(() {
+                _postsStream = _postService.getPosts(widget.community.id);
+              });
+              await Future.delayed(const Duration(milliseconds: 1000));
+            },
+            child: Stack(
             children: [
               // Banner Area
               Container(
@@ -433,6 +441,7 @@ class _CommunityDetailsScreenState extends State<CommunityDetailsScreen> with Si
                 ),
               ),
             ],
+          ),
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: _showCreatePostSheet,

@@ -1,6 +1,8 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shake/shake.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import 'package:nexus_app/core/utils/firestore_cache_extension.dart';
 import 'package:nexus_app/core/theme/app_colors.dart';
 
@@ -19,30 +21,54 @@ class ShakeRefreshWrapper extends StatefulWidget {
 }
 
 class _ShakeRefreshWrapperState extends State<ShakeRefreshWrapper> {
-  ShakeDetector? _detector;
+  StreamSubscription? _subscription;
   bool _isRefreshing = false;
+  
+  DateTime? _lastShakeTime;
 
   @override
   void initState() {
     super.initState();
-    debugPrint('ShakeRefreshWrapper: Initializing ShakeDetector...');
-    _detector = ShakeDetector.autoStart(
-      onPhoneShake: _handleShake,
-      shakeThresholdGravity: 1.8, // Lowered from 2.7 for easier moderate shake triggering
-      shakeSlopTimeMS: 500,
+    debugPrint('ShakeRefreshWrapper: Subscribing to accelerometerEvents...');
+    _subscription = accelerometerEventStream().listen(
+      (AccelerometerEvent event) {
+        final double gX = event.x / 9.80665;
+        final double gY = event.y / 9.80665;
+        final double gZ = event.z / 9.80665;
+
+        final double gForce = sqrt(gX * gX + gY * gY + gZ * gZ);
+        
+        // Print logs when movement starts to show it's working
+        if (gForce > 1.3) {
+          debugPrint('ShakeRefreshWrapper: Force = ${gForce.toStringAsFixed(2)}g');
+        }
+
+        // 1.9g is a reliable shake threshold across all devices
+        if (gForce > 1.9) {
+          final now = DateTime.now();
+          if (_lastShakeTime == null || now.difference(_lastShakeTime!) > const Duration(seconds: 2)) {
+            _lastShakeTime = now;
+            _handleShake();
+          }
+        }
+      },
+      onError: (error) {
+        debugPrint('ShakeRefreshWrapper: Error listening to accelerometer: $error');
+      },
+      cancelOnError: false,
     );
   }
 
   @override
   void dispose() {
-    _detector?.stopListening();
+    _subscription?.cancel();
     super.dispose();
   }
 
   Future<void> _handleShake() async {
     if (_isRefreshing) return;
-
     debugPrint('ShakeRefreshWrapper: Shake Event Detected!');
+
     // Trigger haptic feedback vibration
     HapticFeedback.mediumImpact();
 
