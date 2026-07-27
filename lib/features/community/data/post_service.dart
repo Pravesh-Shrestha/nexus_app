@@ -1,10 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nexus_app/features/community/data/post_model.dart';
 import 'package:nexus_app/features/community/data/comment_model.dart';
 import 'package:nexus_app/core/exceptions/app_exception.dart';
-import 'package:nexus_app/features/home/data/notification_service.dart';
-import 'package:nexus_app/features/home/data/notification_model.dart';
 
 class PostService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -49,34 +46,6 @@ class PostService {
       );
 
       await docRef.set(post.toJson());
-
-      // Notify all other members of the community
-      try {
-        final communityDoc = await _firestore.collection('communities').doc(communityId).get();
-        if (communityDoc.exists) {
-          final data = communityDoc.data();
-          final String communityName = data?['name'] ?? 'a community';
-          final List<dynamic> memberUids = data?['memberUids'] ?? [];
-
-          final notificationService = NotificationService();
-          for (final dynamic memberUid in memberUids) {
-            if (memberUid is String && memberUid != authorId) {
-              final notification = NotificationModel(
-                id: '',
-                title: '$authorName posted in "$communityName": $content',
-                type: 'mention', // using 'mention' type to route to NotificationsScreen
-                createdAt: DateTime.now(),
-                expireAt: DateTime.now().add(const Duration(days: 21)),
-                relatedId: communityId,
-              );
-              await notificationService.sendNotification(memberUid, notification);
-            }
-          }
-        }
-      } catch (e) {
-        // Fail silently for notification flow to not block the post creation process
-        debugPrint('Failed to send community post notifications: $e');
-      }
     } catch (e) {
       throw AppException(
         title: 'Post Failed',

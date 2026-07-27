@@ -106,3 +106,62 @@ exports.onNewNotification = onDocumentCreated("users/{userId}/notifications/{not
     console.error("Error processing onNewNotification push trigger:", error);
   }
 });
+
+// 3. Post Trigger: when a new post is created in posts/{postId}
+exports.onNewPost = onDocumentCreated("posts/{postId}", async (event) => {
+  const snapshot = event.data;
+  if (!snapshot) return;
+
+  const postData = snapshot.data();
+  const communityId = postData.communityId;
+  const authorId = postData.authorId;
+  const authorName = postData.authorName || "A member";
+  const content = postData.content || "";
+
+  if (!communityId) return;
+
+  try {
+    // 1. Fetch community details
+    const communityDoc = await admin.firestore().collection("communities").doc(communityId).get();
+    if (!communityDoc.exists) return;
+
+    const communityData = communityDoc.data();
+    const communityName = communityData.name || "a community";
+    const memberUids = communityData.memberUids || [];
+
+    // 2. Add notification record for all other members
+    const batch = admin.firestore().batch();
+    let hasNotifs = false;
+
+    for (const memberUid of memberUids) {
+      if (memberUid === authorId) continue;
+
+      const notifRef = admin.firestore()
+        .collection("users")
+        .doc(memberUid)
+        .collection("notifications")
+        .doc();
+
+      const notifPayload = {
+        id: notifRef.id,
+        title: `${authorName} posted in "${communityName}": ${content}`,
+        type: "mention",
+        isRead: false,
+        createdAt: admin.firestore.Timestamp.now(),
+        expireAt: admin.firestore.Timestamp.fromDate(new Date(Date.now() + 21 * 24 * 60 * 60 * 1000)), // 21 days
+        relatedId: communityId,
+        status: null,
+      };
+
+      batch.set(notifRef, notifPayload);
+      hasNotifs = true;
+    }
+
+    if (hasNotifs) {
+      await batch.commit();
+      console.log(`Successfully batch created post notifications for community: ${communityName}`);
+    }
+  } catch (error) {
+    console.error("Error processing onNewPost notification trigger:", error);
+  }
+});

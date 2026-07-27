@@ -1,0 +1,58 @@
+name: Build Android Release APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - dev
+  pull_request:
+    branches:
+      - main
+      - master
+      - dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Setup Java Environment
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 3. Setup Flutter Environment
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.12.1'
+          channel: 'stable'
+          cache: true
+
+      # 4. Create FCM service account credentials file from GitHub Secret
+      - name: Create FCM Credentials File
+        run: |
+          mkdir -p assets/config
+          echo '${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}' > assets/config/service-account.json
+
+      # 5. Get Flutter packages
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 5. Build Android Release APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 6. Upload APK as Workflow Artifact
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
