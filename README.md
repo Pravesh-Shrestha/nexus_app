@@ -3,7 +3,7 @@
 [![Build Android Release APK](https://github.com/Pravesh-Shrestha/nexus_app/actions/workflows/build_apk.yml/badge.svg)](https://github.com/Pravesh-Shrestha/nexus_app/actions/workflows/build_apk.yml)
 
 > [!TIP]
-> **Download the Latest Release APK**: You can download the latest compiled Android installer directly from the [GitHub Actions Runs](https://github.com/Pravesh-Shrestha/nexus_app/actions) page. Simply select the latest successful run, scroll down to the **Artifacts** section at the bottom, and click on **`release-apk`**!
+> **Download the Latest Release APK**: You can download the latest compiled Android installer directly from the [GitHub Releases](https://github.com/Pravesh-Shrestha/nexus_app/releases) page (updated on merges to main/tags) or from the [GitHub Actions Runs](https://github.com/Pravesh-Shrestha/nexus_app/actions) page. Simply download the **`app-release.apk`** installer file!
 
 Nexus is a Flutter-based mobile application designed for gamers. It provides a platform to "Own the Arena," "Join the Community," and "Find Your Squad," allowing players to connect, chat, and team up based on their games, rank, and playstyles.
 
